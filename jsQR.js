@@ -377,34 +377,18 @@ function scan(matrix, options) {
                         bottomRightAlignmentPattern: location_1.alignmentPattern,
                     },
                     matrix: matrix,
-                    isRaw: decoded.isRaw,
-                    codewords: decoded.codewords,
-                    formatInfo: decoded.formatInfo,
-                    rawMatrixData: decoded.rawMatrixData
                 };
             }
             if (options && options.multi) {
                 results.push(res); // ★ multiモードなら配列に追加して続行
             }
             else {
-                // multi: false だが、抽出したデータがRAW(復号失敗)だった場合、
-                // 他にもっと良い候補（正常に読める第1QR）があるかもしれないため、リターンせずに後回しにする
-                if (res.isRaw) {
-                    results.push(res);
-                } else {
-                    return res; // 正常に読めたQRがあれば即座に返す
-                }
+                return res; // ★ 従来通り1つ目で終了
             }
         }
     }
-    
-    // 正常に読めたものがなく、RAW（失敗）だけが残った場合、あるいはmultiモードの場合
-    if (results.length > 0) {
-        if (options && options.multi) {
-            return results;
-        } else {
-            return results[0]; // multi:falseなら最初のRAWを返す（復号失敗時の生データ取得用）
-        }
+    if (options && options.multi) {
+        return results.length > 0 ? results : null; // ★ multiモードなら配列を返す
     }
     return null;
 }
@@ -415,8 +399,7 @@ function jsQR(data, width, height, providedOptions) {
         inversionAttempts: providedOptions.inversionAttempts || defaultOptions.inversionAttempts,
         appEncMask: providedOptions.appEncMask,
         extractRawOnly: providedOptions.extractRawOnly,
-        multi: providedOptions.multi,
-        extractRawForFailed: providedOptions.extractRawForFailed
+        multi: providedOptions.multi
     };
     var shouldInvert = options.inversionAttempts === "attemptBoth" || options.inversionAttempts === "invertFirst";
     var tryInvertedFirst = options.inversionAttempts === "onlyInvert" || options.inversionAttempts === "invertFirst";
@@ -855,9 +838,6 @@ function decodeMatrix(matrix, options) {
         var dataBlock = dataBlocks_3[_i];
         var correctedBytes = reedsolomon_1.decode(dataBlock.codewords, dataBlock.codewords.length - dataBlock.numDataCodewords);
         if (!correctedBytes) {
-            if (options && options.extractRawForFailed) {
-                return { isRaw: true, codewords: codewords, version: version, formatInfo: formatInfo };
-            }
             return null;
         }
         for (var i = 0; i < dataBlock.numDataCodewords; i++) {
@@ -865,16 +845,9 @@ function decodeMatrix(matrix, options) {
         }
     }
     try {
-        var res = decodeData_1.decode(resultBytes, version.versionNumber);
-        if (options && options.extractRawForFailed) {
-            res.rawMatrixData = { codewords: codewords, version: version, formatInfo: formatInfo };
-        }
-        return res;
+        return decodeData_1.decode(resultBytes, version.versionNumber);
     }
     catch (_a) {
-        if (options && options.extractRawForFailed) {
-            return { isRaw: true, codewords: codewords, version: version, formatInfo: formatInfo };
-        }
         return null;
     }
 }
@@ -10169,13 +10142,8 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         if (!matrix.get(Math.floor(x), Math.floor(y))) {
             return;
         }
-        var d = distance({ x: x, y: y }, expectedAlignmentPattern);
-        // ★ ツインQR対策：予想位置からの距離がモジュールサイズの3倍より大きい場合は、誤検知(ノイズ)とみなして除外する
-        if (d > moduleSize * 3) {
-            return;
-        }
         var sizeScore = scorePattern({ x: Math.floor(x), y: Math.floor(y) }, [1, 1, 1], matrix);
-        var score = sizeScore + d;
+        var score = sizeScore + distance({ x: x, y: y }, expectedAlignmentPattern);
         return { x: x, y: y, score: score };
     })
         .filter(function (v) { return !!v; })

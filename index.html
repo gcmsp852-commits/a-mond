@@ -69,7 +69,7 @@ const searchCtx=searchCanvas.getContext('2d',{willReadFrequently:true});
 const roiCanvas=document.createElement('canvas');
 const roiCtx=roiCanvas.getContext('2d',{willReadFrequently:true});
 
-const state={stream:null,running:false,starting:false,rafId:0,mode:'search',detector:null,lastProcessAt:0,searchInterval:130,trackInterval:65,searchScale:960,qr1:null,qr2:null,lastSearchCandidates:[],appPassword:null,appMask:null,lostCount:0,maxLost:6};
+const state={stream:null,running:false,starting:false,rafId:0,mode:'search',detector:null,lastProcessAt:0,searchInterval:130,trackInterval:65,searchScale:1280,qr1:null,qr2:null,lastSearchCandidates:[],appPassword:null,appMask:null,lostCount:0,maxLost:6,searchMiss:0};
 
 const arr=v=>!v?[]:Array.isArray(v)?v:[v];
 const txt=(id,v)=>document.getElementById(id).textContent=v;
@@ -80,24 +80,31 @@ const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
 function mgCodeToBits(code){if(typeof code!=='number'||!Number.isFinite(code))return null;return (code>>>0).toString(2).padStart(16,'0').slice(-16);}
 function parseManagement(bitsOrCode){const bits=typeof bitsOrCode==='string'?bitsOrCode:mgCodeToBits(bitsOrCode);if(!bits||bits.length!==16)return{bits:null,qrNo:null,sameData:false,systemEncrypted:false,appEncrypted:false,dataType:null};return{bits,qrNo:bits[0]==='1'?2:1,sameData:bits[5]==='1',systemEncrypted:bits[6]==='1',appEncrypted:bits[7]==='1',dataType:parseInt(bits.slice(8,11),2)};}
+function isVersionObject(v){return!!(v&&typeof v==='object'&&typeof v.versionNumber==='number');}
+function isFormatInfoObject(v){return!!(v&&typeof v==='object'&&typeof v.dataMask==='number'&&typeof v.errorCorrectionLevel!=='undefined');}
+function resolveVersion(c){if(isVersionObject(c?.rawData?.version))return c.rawData.version;if(isVersionObject(c?.version))return c.version;return null;}
+function resolveFormatInfo(c){if(isFormatInfoObject(c?.rawData?.formatInfo))return c.rawData.formatInfo;if(isFormatInfoObject(c?.formatInfo))return c.formatInfo;return null;}
+function getRawMeta(c){if(!c)return null;const version=resolveVersion(c),formatInfo=resolveFormatInfo(c);if(!version||!formatInfo)return null;const raw=c?.rawBytes?.length?Array.from(c.rawBytes):(Array.isArray(c?.rawData?.codewords)?c.rawData.codewords.slice():null);if(!raw?.length)return null;return{codewords:raw,version,formatInfo};}
+function hasRawMeta(c){return!!((c?.rawBytes?.length||Array.isArray(c?.rawData?.codewords))&&resolveVersion(c)&&resolveFormatInfo(c));}
 function locPoints(loc){if(!loc)return[];if(loc.corners?.length>=4)return loc.corners.map(cpy);const tl=loc.topLeftCorner||loc.topLeft,tr=loc.topRightCorner||loc.topRight,br=loc.bottomRightCorner||loc.bottomRight,bl=loc.bottomLeftCorner||loc.bottomLeft;return[tl,tr,br,bl].filter(Boolean).map(cpy);}
 function mapPoints(ps,sx,sy,ox=0,oy=0){return(ps||[]).map(p=>({x:p.x*sx+ox,y:p.y*sy+oy}));}
 function bounds(ps,pad=0){if(!ps?.length)return null;const xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);const minX=Math.min(...xs)-pad,maxX=Math.max(...xs)+pad,minY=Math.min(...ys)-pad,maxY=Math.max(...ys)+pad;return{x:minX,y:minY,w:maxX-minX,h:maxY-minY};}
 function clampBounds(b,maxW,maxH){const x=clamp(Math.round(b.x),0,Math.max(0,maxW-1)),y=clamp(Math.round(b.y),0,Math.max(0,maxH-1));const w=clamp(Math.round(b.w),1,Math.max(1,maxW-x)),h=clamp(Math.round(b.h),1,Math.max(1,maxH-y));return{x,y,w,h};}
-function expandBounds(b,m,maxW,maxH){if(!b)return null;return clampBounds({x:b.x-m,y:b.y-m,w:b.w+m*2,h:b.h+m*2},maxW,maxH);} function rectIoU(a,b){if(!a||!b)return 0;const ax2=a.x+a.w,ay2=a.y+a.h,bx2=b.x+b.w,by2=b.y+b.h,ix1=Math.max(a.x,b.x),iy1=Math.max(a.y,b.y),ix2=Math.min(ax2,bx2),iy2=Math.min(ay2,by2),iw=Math.max(0,ix2-ix1),ih=Math.max(0,iy2-iy1),inter=iw*ih;if(!inter)return 0;const union=a.w*a.h+b.w*b.h-inter;return union>0?inter/union:0;} function sameCandidate(a,b){if(!a?.center||!b?.center||!a?.bounds||!b?.bounds)return false;const iou=rectIoU(a.bounds,b.bounds);if(iou>=0.38)return true;const d=dist(a.center,b.center),mA=Math.max(1,Math.min(a.bounds.w,a.bounds.h)),mB=Math.max(1,Math.min(b.bounds.w,b.bounds.h)),th=Math.max(6,Math.min(mA,mB)*0.16),areaA=Math.max(1,a.bounds.w*a.bounds.h),areaB=Math.max(1,b.bounds.w*b.bounds.h),ratio=areaA>areaB?areaA/areaB:areaB/areaA;return d<=th&&ratio<2.8;}
+function expandBounds(b,m,maxW,maxH){if(!b)return null;return clampBounds({x:b.x-m,y:b.y-m,w:b.w+m*2,h:b.h+m*2},maxW,maxH);}
+function rectIoU(a,b){if(!a||!b)return 0;const ax2=a.x+a.w,ay2=a.y+a.h,bx2=b.x+b.w,by2=b.y+b.h,ix1=Math.max(a.x,b.x),iy1=Math.max(a.y,b.y),ix2=Math.min(ax2,bx2),iy2=Math.min(ay2,by2),iw=Math.max(0,ix2-ix1),ih=Math.max(0,iy2-iy1),inter=iw*ih;if(!inter)return 0;const union=a.w*a.h+b.w*b.h-inter;return union>0?inter/union:0;}
+function sameCandidate(a,b){if(!a?.center||!b?.center||!a?.bounds||!b?.bounds)return false;if(a.management?.qrNo&&b.management?.qrNo&&a.management.qrNo!==b.management.qrNo)return false;const iou=rectIoU(a.bounds,b.bounds),minSide=Math.max(1,Math.min(a.bounds.w,a.bounds.h,b.bounds.w,b.bounds.h)),d=dist(a.center,b.center),dn=d/minSide,areaA=Math.max(1,a.bounds.w*a.bounds.h),areaB=Math.max(1,b.bounds.w*b.bounds.h),ratio=areaA>areaB?areaA/areaB:areaB/areaA;if(iou>=0.74)return true;if(iou>=0.58&&dn<=0.1&&ratio<2.2)return true;return dn<=0.07&&ratio<2.2;}
 
-function normalizeCandidate(detail,ox=0,oy=0,sx=1,sy=1){if(!detail)return null;const pts=mapPoints(detail.corners||locPoints(detail.location),sx,sy,ox,oy);if(pts.length<4)return null;const raw=detail.rawBytes||detail.rawCodewords||null;const mgBits=detail.managementBits||detail.bitStream?.managementBits||mgCodeToBits(detail.managementCode);return{text:detail.data||detail.text||null,managementCode:detail.managementCode??null,management:parseManagement(mgBits),points:pts,center:center(pts),bounds:bounds(pts,0),version:detail.version||detail.rawData?.version||null,formatInfo:detail.formatInfo||detail.rawData?.formatInfo||null,rawBytes:raw?Uint8Array.from(raw):null,rawData:detail.rawData||(raw&&detail.version&&detail.formatInfo?{codewords:Array.from(raw),version:detail.version,formatInfo:detail.formatInfo}:null),decodeStage:detail.decodeStage||null,score:detail.score||0,isDecrypted:!!detail.isDecrypted};}
+function normalizeCandidate(detail,ox=0,oy=0,sx=1,sy=1){if(!detail)return null;const pts=mapPoints(detail.corners||locPoints(detail.location),sx,sy,ox,oy);if(pts.length<4)return null;const raw=detail.rawBytes||detail.rawCodewords||null,verObj=isVersionObject(detail.rawData?.version)?detail.rawData.version:(isVersionObject(detail.version)?detail.version:null),fmtObj=isFormatInfoObject(detail.rawData?.formatInfo)?detail.rawData.formatInfo:(isFormatInfoObject(detail.formatInfo)?detail.formatInfo:null),vNo=typeof detail.version==='number'?detail.version:(verObj?.versionNumber??null),rawData=(detail.rawData&&Array.isArray(detail.rawData.codewords)&&isVersionObject(detail.rawData.version)&&isFormatInfoObject(detail.rawData.formatInfo))?detail.rawData:(raw&&verObj&&fmtObj?{codewords:Array.from(raw),version:verObj,formatInfo:fmtObj}:null),mgBits=detail.managementBits||detail.bitStream?.managementBits||mgCodeToBits(detail.managementCode);return{text:detail.data||detail.text||null,managementCode:detail.managementCode??null,management:parseManagement(mgBits),points:pts,center:center(pts),bounds:bounds(pts,0),version:verObj,versionNumber:vNo,formatInfo:fmtObj,rawBytes:raw?Uint8Array.from(raw):null,rawData,decodeStage:detail.decodeStage||null,score:detail.score||0,isDecrypted:!!detail.isDecrypted};}
 
-function cScore(c){if(!c)return-Infinity;let s=0;if(c.text)s+=1200;if(c.management?.bits)s+=300;if(c.rawBytes)s+=500;if(c.version&&c.formatInfo)s+=80;if(c.points?.length>=4)s+=120;s+=Math.min(180,Math.round(Math.sqrt(Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)))));return s+(c.score||0);}
-function mergeInfo(a,b){if(!a)return b;if(!b)return a;const p=(b.points?.length||0)>=(a.points?.length||0)?b.points:a.points;const bmg=!!b.management?.bits,amg=!!a.management?.bits;return{...a,...b,text:bmg?(b.text||a.text||null):(a.text||b.text||null),managementCode:bmg?(b.managementCode??a.managementCode??null):(a.managementCode??b.managementCode??null),management:bmg?b.management:(amg?a.management:(b.management||a.management)),rawBytes:b.rawBytes||a.rawBytes||null,rawData:b.rawData||a.rawData||null,version:b.version||a.version||null,formatInfo:b.formatInfo||a.formatInfo||null,points:p,center:center(p||[]),bounds:bounds(p||[],0),decodeStage:b.decodeStage||a.decodeStage||null,score:Math.max(a.score||0,b.score||0),isDecrypted:!!(a.isDecrypted||b.isDecrypted)};}
+function cScore(c){if(!c)return-Infinity;let s=0;if(c.text)s+=1200;if(c.management?.bits)s+=300;if(c.rawBytes)s+=500;if(hasRawMeta(c))s+=80;if(c.points?.length>=4)s+=120;s+=Math.min(180,Math.round(Math.sqrt(Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)))));return s+(c.score||0);}
+function mergeInfo(a,b){if(!a)return b;if(!b)return a;const p=(b.points?.length||0)>=(a.points?.length||0)?b.points:a.points,bmg=!!b.management?.bits,amg=!!a.management?.bits,rawData=(b.rawData&&Array.isArray(b.rawData.codewords)&&isVersionObject(b.rawData.version)&&isFormatInfoObject(b.rawData.formatInfo))?b.rawData:((a.rawData&&Array.isArray(a.rawData.codewords)&&isVersionObject(a.rawData.version)&&isFormatInfoObject(a.rawData.formatInfo))?a.rawData:null),version=isVersionObject(b.version)?b.version:(isVersionObject(b.rawData?.version)?b.rawData.version:(isVersionObject(a.version)?a.version:(isVersionObject(a.rawData?.version)?a.rawData.version:null))),formatInfo=isFormatInfoObject(b.formatInfo)?b.formatInfo:(isFormatInfoObject(b.rawData?.formatInfo)?b.rawData.formatInfo:(isFormatInfoObject(a.formatInfo)?a.formatInfo:(isFormatInfoObject(a.rawData?.formatInfo)?a.rawData.formatInfo:null))),versionNumber=typeof b.versionNumber==='number'?b.versionNumber:(typeof b.version==='number'?b.version:(typeof a.versionNumber==='number'?a.versionNumber:(typeof a.version==='number'?a.version:(version?.versionNumber??null))));return{...a,...b,text:bmg?(b.text||a.text||null):(a.text||b.text||null),managementCode:bmg?(b.managementCode??a.managementCode??null):(a.managementCode??b.managementCode??null),management:bmg?b.management:(amg?a.management:(b.management||a.management)),rawBytes:b.rawBytes||a.rawBytes||null,rawData,version,versionNumber,formatInfo,points:p,center:center(p||[]),bounds:bounds(p||[],0),decodeStage:b.decodeStage||a.decodeStage||null,score:Math.max(a.score||0,b.score||0),isDecrypted:!!(a.isDecrypted||b.isDecrypted)};}
 function mergeCandidates(a,b){const out=a.slice();for(const c of b){const i=out.findIndex(v=>sameCandidate(v,c));if(i<0)out.push(c);else out[i]=mergeInfo(out[i],c);}return out.sort((x,y)=>cScore(y)-cScore(x));}
 
 function decodeFast(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{return arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true})).map(d=>normalizeCandidate(d,ox,oy,sx,sy)).filter(Boolean).sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeFast',e);return[];}}
-function decodeRaw(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{const out=[];for(const cand of arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true,extractRawOnly:true}))){const raw=cand?.codewords?Array.from(cand.codewords):null;const rawData=raw&&cand?.version&&cand?.formatInfo?{codewords:raw,version:cand.version,formatInfo:cand.formatInfo}:null;const resumed=rawData&&typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(rawData,null):null;const n=normalizeCandidate({location:cand?.location||null,corners:cand?.corners||null,data:resumed?.text||resumed?.data||null,text:resumed?.text||resumed?.data||null,managementCode:resumed?.managementCode??null,rawCodewords:raw,rawData,version:cand?.version||null,formatInfo:cand?.formatInfo||null,decodeStage:resumed?'raw+resume':'raw',score:resumed?20:0},ox,oy,sx,sy);if(n)out.push(n);}return out.sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeRaw',e);return[];}}
+function decodeRaw(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{const out=[];for(const cand of arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true,extractRawOnly:true}))){const raw=cand?.codewords?Array.from(cand.codewords):null,rawData=raw&&isVersionObject(cand?.version)&&isFormatInfoObject(cand?.formatInfo)?{codewords:raw,version:cand.version,formatInfo:cand.formatInfo}:null,resumed=rawData&&typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(rawData,null):null,n=normalizeCandidate({location:cand?.location||null,corners:cand?.corners||null,data:resumed?.text||resumed?.data||null,text:resumed?.text||resumed?.data||null,managementCode:resumed?.managementCode??null,rawCodewords:raw,rawData,version:cand?.version||null,formatInfo:cand?.formatInfo||null,decodeStage:resumed?'raw+resume':'raw',score:resumed?20:0},ox,oy,sx,sy);if(n)out.push(n);}return out.sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeRaw',e);return[];}}
 
-function chooseBestPair(cands){const v=cands.filter(c=>c?.points?.length>=4);if(!v.length)return{first:null,second:null};const ord=v.slice().sort((a,b)=>cScore(b)-cScore(a));const first=ord.find(c=>c.management?.qrNo===1)||ord[0];const pScore=c=>{const d=dist(first.center,c.center);let s=cScore(c)+Math.min(700,d*1.2);const iou=rectIoU(first.bounds,c.bounds);if(iou>0.15)s-=350;const a1=Math.max(1,(first.bounds?.w||1)*(first.bounds?.h||1)),a2=Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1));if((a1>a2?a1/a2:a2/a1)>8)s-=240;if(c.management?.qrNo===2)s+=900;return s;};const others=ord.filter(c=>c!==first&&!sameCandidate(c,first));if(!others.length)return{first,second:null};others.sort((a,b)=>pScore(b)-pScore(a));return{first,second:others[0]||null};}
-function pickEncryptedSecond(cands,qr1,nearRef=null){const f=cands.filter(c=>c?.rawBytes&&c?.version&&c?.formatInfo&&!sameCandidate(c,qr1));if(!f.length)return null;f.sort((a,b)=>{const da=nearRef?.center&&a.center?dist(nearRef.center,a.center):(qr1?.center&&a.center?dist(qr1.center,a.center):0),db=nearRef?.center&&b.center?dist(nearRef.center,b.center):(qr1?.center&&b.center?dist(qr1.center,b.center):0);const sa=cScore(a)+Math.min(700,da),sb=cScore(b)+Math.min(700,db);return sb-sa;});return{...f[0],text:null,isDecrypted:false};}
-
+function chooseBestPair(cands){const v=cands.filter(c=>c?.points?.length>=4);if(!v.length)return{first:null,second:null};const ord=v.slice().sort((a,b)=>cScore(b)-cScore(a)),q1=ord.filter(c=>c.management?.qrNo===1),q2=ord.filter(c=>c.management?.qrNo===2),first=q1[0]||ord[0];if(!first)return{first:null,second:null};const q2Best=q2.find(c=>c!==first&&!sameCandidate(c,first));if(q2Best)return{first,second:q2Best};const base=Math.max(1,Math.min(first.bounds?.w||1,first.bounds?.h||1)),otherScore=c=>{const d=dist(first.center,c.center),dn=d/base,a1=Math.max(1,(first.bounds?.w||1)*(first.bounds?.h||1)),a2=Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)),ratio=a1>a2?a1/a2:a2/a1;let s=cScore(c);if(c.management?.qrNo===2)s+=700;if(c.management?.qrNo===1)s-=260;if(dn<0.08)s-=900;else if(dn>=0.15&&dn<=0.95)s+=150;else if(dn>2.8)s-=160;if(ratio>9)s-=220;return s;},others=ord.filter(c=>c!==first&&!sameCandidate(c,first)).sort((a,b)=>otherScore(b)-otherScore(a));return{first,second:others[0]||null};}
+function pickEncryptedSecond(cands,qr1,nearRef=null){const f=cands.filter(c=>hasRawMeta(c)&&!sameCandidate(c,qr1));if(!f.length)return null;const base=Math.max(1,Math.min(qr1?.bounds?.w||1,qr1?.bounds?.h||1));f.sort((a,b)=>{const score=c=>{const d1=qr1?.center&&c.center?dist(qr1.center,c.center):0,dn=d1/base,dr=nearRef?.center&&c.center?dist(nearRef.center,c.center):0;let s=cScore(c);if(c.management?.qrNo===2)s+=500;if(c.management?.qrNo===1)s-=280;if(dn<0.08)s-=1200;else if(dn>=0.12&&dn<=1.1)s+=220;else if(dn>3.2)s-=220;if(nearRef?.center)s+=Math.max(0,220-dr*2.2);return s;};return score(b)-score(a);});return{...f[0],text:null,isDecrypted:false};}
 function withRoi(q,m=20){if(!q?.bounds)return q;return{...q,roi:expandBounds(q.bounds,m,fullCanvas.width,fullCanvas.height)};}
 function cropRoi(b){if(!b)return null;const c=clampBounds(b,fullCanvas.width,fullCanvas.height);roiCanvas.width=c.w;roiCanvas.height=c.h;roiCtx.clearRect(0,0,c.w,c.h);roiCtx.drawImage(fullCanvas,c.x,c.y,c.w,c.h,0,0,c.w,c.h);return{bounds:c,imageData:roiCtx.getImageData(0,0,c.w,c.h)};}
 function drawPoly(ps,col,label){if(!ps||ps.length<4)return;ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);for(let i=1;i<ps.length;i++)ctx.lineTo(ps[i].x,ps[i].y);ctx.closePath();ctx.stroke();ctx.fillStyle=col;ctx.font='bold 18px sans-serif';ctx.fillText(label,ps[0].x+6,ps[0].y-8);ctx.restore();}
@@ -109,8 +116,8 @@ function prepSearch(){const fw=fullCanvas.width,fh=fullCanvas.height,scale=Math.
 
 async function detectByBarcodeDetector(sx,sy){if(!state.detector)return[];try{const found=await state.detector.detect(searchCanvas);const list=[];for(const item of found){let ps=null;const cp=Array.isArray(item.cornerPoints)?item.cornerPoints:null;if(cp&&cp.length>=4)ps=cp.map(p=>({x:p.x*sx,y:p.y*sy}));else if(item.boundingBox){const b=item.boundingBox;ps=[{x:b.x*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:(b.y+b.height)*sy},{x:b.x*sx,y:(b.y+b.height)*sy}];}if(!ps)continue;const b=expandBounds(bounds(ps,0),16,fullCanvas.width,fullCanvas.height);const roi=cropRoi(b);if(!roi)continue;const dec=decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);if(dec.length)list.push(dec[0]);}return list;}catch(e){console.warn('detector',e);return[];}}
 
-function askPwNeeded(){return !!(state.qr1?.management?.appEncrypted&&state.qr2?.rawBytes&&!state.qr2?.isDecrypted);}
-function ui(){const wait=askPwNeeded();txt('text1',state.qr1?.text||'未検出');txt('text2',wait?'候補あり（未復号）':(state.qr2?.text||(state.qr2?.rawBytes?'候補あり（未復号）':'未検出')));txt('mg1',state.qr1?.management?.bits||'--');txt('mg2',state.qr2?.management?.bits||'--');txt('archInfo',state.mode==='search'?'search: 2QR探索中':state.mode==='track'?'track: ROI追跡中':state.mode==='password'?'password: 第2QRの復号待ち':'paused');}
+function askPwNeeded(){return !!(state.qr1?.management?.appEncrypted&&hasRawMeta(state.qr2)&&!state.qr2?.isDecrypted);}
+function ui(){const wait=askPwNeeded();txt('text1',state.qr1?.text||'未検出');txt('text2',wait?'候補あり（未復号）':(state.qr2?.text||(hasRawMeta(state.qr2)?'候補あり（未復号）':'未検出')));txt('mg1',state.qr1?.management?.bits||'--');txt('mg2',state.qr2?.management?.bits||'--');txt('archInfo',state.mode==='search'?'search: 2QR探索中':state.mode==='track'?'track: ROI追跡中':state.mode==='password'?'password: 第2QRの復号待ち':'paused');}
 function done(){if(state.qr1?.management?.appEncrypted&&!state.qr2?.isDecrypted)return false;if(!state.qr1?.text||!state.qr2?.text)return false;txt('finalText1',state.qr1.text);txt('finalText2',state.qr2.text);txt('finalMg1',state.qr1.management?.bits||'--');txt('finalMg2',state.qr2.management?.bits||'--');document.getElementById('resultScreen').style.display='block';document.getElementById('cameraContainer').style.display='none';document.getElementById('statusPanel').style.display='none';state.mode='paused';state.running=false;return true;}
 
 function fullFast(){const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);const sx=fullCanvas.width/searchCanvas.width,sy=fullCanvas.height/searchCanvas.height;return decodeFast(img,0,0,sx,sy);}
@@ -118,11 +125,99 @@ function fullRaw(){const img=fullCtx.getImageData(0,0,fullCanvas.width,fullCanva
 function rawInBounds(b){const roi=cropRoi(b);return roi?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):[];}
 function tryFullRawSecond(qr1){if(!qr1?.management?.appEncrypted)return null;const raw=fullRaw();state.lastSearchCandidates=mergeCandidates(state.lastSearchCandidates||[],raw);return pickEncryptedSecond(raw,qr1);}
 function decodeTrack(entry,rawMode=false){if(!entry?.roi)return null;const roi=cropRoi(entry.roi);if(!roi)return null;const d=rawMode?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);return d.length?withRoi(d[0],24):null;}
+function collectDecryptCandidates(){const list=[];const add=c=>{if(!hasRawMeta(c))return;if(state.qr1&&sameCandidate(c,state.qr1))return;const i=list.findIndex(v=>sameCandidate(v,c));if(i<0)list.push(c);else if(cScore(c)>cScore(list[i]))list[i]=c;};add(state.qr2);for(const c of state.lastSearchCandidates||[])add(c);return list.sort((a,b)=>cScore(b)-cScore(a));}
 
-async function processSearch(){const {sx,sy}=prepSearch();let cands=await detectByBarcodeDetector(sx,sy);if(cands.length<2)cands=mergeCandidates(cands,fullFast());let pair=chooseBestPair(cands);if(!pair.second&&pair.first)cands=mergeCandidates(cands,decodeFast(fullCtx.getImageData(0,0,fullCanvas.width,fullCanvas.height),0,0,1,1)),pair=chooseBestPair(cands);state.lastSearchCandidates=cands;let {first,second}=pair;if(first?.management?.appEncrypted){if(second&&sameCandidate(first,second))second=null;let raw=[];if(second?.bounds)raw=mergeCandidates(raw,rawInBounds(expandBounds(second.bounds,20,fullCanvas.width,fullCanvas.height)));if(!raw.length){const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);raw=mergeCandidates(raw,decodeRaw(img,0,0,sx,sy));}if(!raw.length)raw=mergeCandidates(raw,fullRaw());cands=mergeCandidates(cands,raw);state.lastSearchCandidates=cands;const rs=pickEncryptedSecond(cands,first,second);if(rs)second=rs;}if(first){state.qr1=withRoi(first,24);state.qr2=second?withRoi(second,24):null;state.lostCount=0;state.mode='track';overlay();ui();if(askPwNeeded()){showPasswordScreen();return;}done();}else{overlay();ui();}}
+async function processSearch(){
+  const {sx,sy}=prepSearch();
+  let cands=await detectByBarcodeDetector(sx,sy);
+  if(cands.length<2)cands=mergeCandidates(cands,fullFast());
+  let pair=chooseBestPair(cands);
+  if(!pair.first||(!pair.second&&pair.first)){
+    cands=mergeCandidates(cands,decodeFast(fullCtx.getImageData(0,0,fullCanvas.width,fullCanvas.height),0,0,1,1));
+    pair=chooseBestPair(cands);
+  }
 
-async function processTrack(){const n1=decodeTrack(state.qr1,false),n2=decodeTrack(state.qr2,false);if(n1)state.qr1=withRoi(mergeInfo(state.qr1,n1),24);if(n2)state.qr2=withRoi(mergeInfo(state.qr2,n2),24);if(state.qr1?.management?.appEncrypted&&(!state.qr2?.rawBytes||!state.qr2?.version||!state.qr2?.formatInfo)){let r2=decodeTrack(state.qr2,true);if(!r2&&state.qr2?.bounds){const near=rawInBounds(expandBounds(state.qr2.bounds,20,fullCanvas.width,fullCanvas.height));r2=near.length?withRoi(near[0],24):null;}if(!r2)r2=tryFullRawSecond(state.qr1);if(r2)state.qr2=withRoi(mergeInfo(state.qr2,r2),24);}if(!n1&&!n2)state.lostCount++;else state.lostCount=0;if(state.lostCount>=state.maxLost){state.mode='search';state.qr1=null;state.qr2=null;overlay();ui();return;}if((!state.qr2||sameCandidate(state.qr1,state.qr2)||(state.qr1?.management?.appEncrypted&&!state.qr2.rawBytes))&&state.lastSearchCandidates.length>1){const sec=state.qr1?.management?.appEncrypted?pickEncryptedSecond(state.lastSearchCandidates,state.qr1,state.qr2):chooseBestPair(state.lastSearchCandidates).second;if(sec)state.qr2=withRoi(mergeInfo(state.qr2,sec),24);}overlay();ui();if(askPwNeeded()){showPasswordScreen();return;}done();}
+  const runHeavyFallback=(state.searchMiss%3)===0;
+  if(runHeavyFallback&&pair.first&&!pair.second){
+    cands=mergeCandidates(cands,fullRaw());
+    pair=chooseBestPair(cands);
+  }
 
+  state.lastSearchCandidates=cands;
+  let {first,second}=pair;
+  if(first?.management?.appEncrypted){
+    if(second&&sameCandidate(first,second))second=null;
+    let raw=[];
+    if(second?.bounds)raw=mergeCandidates(raw,rawInBounds(expandBounds(second.bounds,20,fullCanvas.width,fullCanvas.height)));
+    if(!raw.length){
+      const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);
+      raw=mergeCandidates(raw,decodeRaw(img,0,0,sx,sy));
+    }
+    if(!raw.length&&runHeavyFallback)raw=mergeCandidates(raw,fullRaw());
+    cands=mergeCandidates(cands,raw);
+    state.lastSearchCandidates=cands;
+    const rs=pickEncryptedSecond(cands,first,second);
+    if(rs)second=rs;
+  }
+
+  if(first&&second)state.searchMiss=0;else state.searchMiss=Math.min(999,state.searchMiss+1);
+
+  if(first){
+    state.qr1=withRoi(first,24);
+    state.qr2=second?withRoi(second,24):null;
+    state.lostCount=0;
+    state.mode='track';
+    overlay();
+    ui();
+    if(askPwNeeded()){showPasswordScreen();return;}
+    done();
+  }else{
+    overlay();
+    ui();
+  }
+}
+async function processTrack(){
+  const n1=decodeTrack(state.qr1,false),n2=decodeTrack(state.qr2,false);
+  if(n1)state.qr1=withRoi(mergeInfo(state.qr1,n1),24);
+  if(n2)state.qr2=withRoi(mergeInfo(state.qr2,n2),24);
+
+  if(state.qr1?.management?.appEncrypted&&!hasRawMeta(state.qr2)){
+    let r2=decodeTrack(state.qr2,true);
+    if(!r2&&state.qr2?.bounds){
+      const near=rawInBounds(expandBounds(state.qr2.bounds,20,fullCanvas.width,fullCanvas.height));
+      if(near.length){
+        const p=pickEncryptedSecond(near,state.qr1,state.qr2)||near[0];
+        r2=withRoi(p,24);
+      }
+    }
+    if(!r2)r2=tryFullRawSecond(state.qr1);
+    if(!r2&&state.lastSearchCandidates.length){
+      const back=pickEncryptedSecond(state.lastSearchCandidates,state.qr1,state.qr2);
+      if(back)r2=withRoi(back,24);
+    }
+    if(r2)state.qr2=withRoi(mergeInfo(state.qr2,r2),24);
+  }
+
+  if(!n1&&!n2)state.lostCount++;else state.lostCount=0;
+  if(state.lostCount>=state.maxLost){
+    state.mode='search';
+    state.qr1=null;
+    state.qr2=null;
+    overlay();
+    ui();
+    return;
+  }
+
+  if((!state.qr2||sameCandidate(state.qr1,state.qr2)||(state.qr1?.management?.appEncrypted&&!hasRawMeta(state.qr2)))&&state.lastSearchCandidates.length>1){
+    const sec=state.qr1?.management?.appEncrypted?pickEncryptedSecond(state.lastSearchCandidates,state.qr1,state.qr2):chooseBestPair(state.lastSearchCandidates).second;
+    if(sec)state.qr2=withRoi(mergeInfo(state.qr2,sec),24);
+  }
+
+  overlay();
+  ui();
+  if(askPwNeeded()){showPasswordScreen();return;}
+  done();
+}
 async function loop(){if(!state.running)return;state.rafId=requestAnimationFrame(loop);const now=performance.now(),intv=state.mode==='track'?state.trackInterval:state.searchInterval;if(now-state.lastProcessAt<intv)return;state.lastProcessAt=now;if(!fitVideo())return;fullCtx.drawImage(video,0,0,fullCanvas.width,fullCanvas.height);if(state.mode==='password'||state.mode==='paused'){overlay();return;}try{if(state.mode==='search')await processSearch();else await processTrack();}catch(e){console.error(e);txt('archInfo','error: '+String(e?.message||e));state.mode='search';}}
 
 async function createDetector(){if(!('BarcodeDetector'in window)){state.detector=null;txt('detectorInfo','エンジン: jsQR ROI');return;}try{const s=await BarcodeDetector.getSupportedFormats();if(s.includes('qr_code')){state.detector=new BarcodeDetector({formats:['qr_code']});txt('detectorInfo','エンジン: BarcodeDetector + jsQR ROI');return;}}catch(e){console.warn(e);}state.detector=null;txt('detectorInfo','エンジン: jsQR ROI');}
@@ -130,15 +225,85 @@ async function createDetector(){if(!('BarcodeDetector'in window)){state.detector
 async function startCamera(){if(state.starting)return false;state.starting=true;try{if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});state.stream=stream;video.srcObject=stream;await new Promise(r=>{if(video.readyState>=1)return r();video.addEventListener('loadedmetadata',r,{once:true});});await video.play().catch(()=>{});return true;}catch(err){alert('カメラを起動できませんでした。\nエラー: '+(err?.message||err));return false;}finally{state.starting=false;}}
 function stopCamera(){state.running=false;cancelAnimationFrame(state.rafId);state.rafId=0;try{video.pause();}catch{}if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}video.srcObject=null;}
 
-async function sha256(bytes){const b=await crypto.subtle.digest('SHA-256',bytes);return new Uint8Array(b);} 
-async function deriveMask(password,needed){const out=new Uint8Array(needed);let filled=0;let h=await sha256(new TextEncoder().encode(String(password??'')));while(filled<needed){const take=Math.min(32,needed-filled);out.set(h.subarray(0,take),filled);filled+=take;if(filled>=needed)break;h=await sha256(h);}return out;}
-
-async function startApp(){const b=document.getElementById('startBtn');b.disabled=true;b.innerText='起動中...';if(typeof jsQR==='undefined'){alert('jsQR.js の読み込みに失敗しました。');b.disabled=false;b.innerText='カメラを起動する';return;}await createDetector();if(!await startCamera()){b.disabled=false;b.innerText='カメラを起動する';return;}document.getElementById('startScreen').style.display='none';document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.appPassword=null;state.appMask=null;state.lostCount=0;ui();requestAnimationFrame(loop);} 
+function sha256Bytes(msgBytes){
+  const K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n)),ch=(x,y,z)=>(x&y)^(~x&z),maj=(x,y,z)=>(x&y)^(x&z)^(y&z),s0=x=>rotr(x,7)^rotr(x,18)^(x>>>3),s1=x=>rotr(x,17)^rotr(x,19)^(x>>>10),S0=x=>rotr(x,2)^rotr(x,13)^rotr(x,22),S1=x=>rotr(x,6)^rotr(x,11)^rotr(x,25);
+  const ml=msgBytes.length,bitLenHi=Math.floor((ml*8)/0x100000000),bitLenLo=(ml*8)>>>0,withOne=ml+1,padLen=(withOne%64<=56)?(56-(withOne%64)):(56+64-(withOne%64)),totalLen=withOne+padLen+8,m=new Uint8Array(totalLen);
+  m.set(msgBytes,0);m[ml]=0x80;
+  const dv=new DataView(m.buffer);dv.setUint32(totalLen-8,bitLenHi,false);dv.setUint32(totalLen-4,bitLenLo,false);
+  let a=0x6a09e667,b=0xbb67ae85,c=0x3c6ef372,d=0xa54ff53a,e=0x510e527f,f=0x9b05688c,g=0x1f83d9ab,h=0x5be0cd19;
+  const W=new Uint32Array(64);
+  for(let off=0;off<m.length;off+=64){
+    for(let i=0;i<16;i++)W[i]=dv.getUint32(off+i*4,false);
+    for(let i=16;i<64;i++)W[i]=(s1(W[i-2])+W[i-7]+s0(W[i-15])+W[i-16])>>>0;
+    let A=a,B=b,C=c,D=d,E=e,F=f,G=g,H=h;
+    for(let i=0;i<64;i++){const t1=(H+S1(E)+ch(E,F,G)+K[i]+W[i])>>>0,t2=(S0(A)+maj(A,B,C))>>>0;H=G;G=F;F=E;E=(D+t1)>>>0;D=C;C=B;B=A;A=(t1+t2)>>>0;}
+    a=(a+A)>>>0;b=(b+B)>>>0;c=(c+C)>>>0;d=(d+D)>>>0;e=(e+E)>>>0;f=(f+F)>>>0;g=(g+G)>>>0;h=(h+H)>>>0;
+  }
+  const out=new Uint8Array(32),odv=new DataView(out.buffer);
+  odv.setUint32(0,a,false);odv.setUint32(4,b,false);odv.setUint32(8,c,false);odv.setUint32(12,d,false);odv.setUint32(16,e,false);odv.setUint32(20,f,false);odv.setUint32(24,g,false);odv.setUint32(28,h,false);
+  return out;
+}
+function utf8Bytes(str){return new TextEncoder().encode(String(str??''));}
+function deriveMask(password,needed){const out=new Uint8Array(needed);let filled=0,h=sha256Bytes(utf8Bytes(password));while(filled<needed){const take=Math.min(32,needed-filled);out.set(h.subarray(0,take),filled);filled+=take;if(filled>=needed)break;h=sha256Bytes(h);}return out;}
+async function startApp(){const b=document.getElementById('startBtn');b.disabled=true;b.innerText='起動中...';if(typeof jsQR==='undefined'){alert('jsQR.js の読み込みに失敗しました。');b.disabled=false;b.innerText='カメラを起動する';return;}await createDetector();if(!await startCamera()){b.disabled=false;b.innerText='カメラを起動する';return;}document.getElementById('startScreen').style.display='none';document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.appPassword=null;state.appMask=null;state.lostCount=0;state.searchMiss=0;ui();requestAnimationFrame(loop);} 
 function showPasswordScreen(){state.mode='password';document.getElementById('appPasswordInput').value='';document.getElementById('passwordScreen').style.display='flex';ui();}
 function cancelPassword(){document.getElementById('passwordScreen').style.display='none';state.mode='track';ui();}
-async function submitPassword(){const pw=document.getElementById('appPasswordInput').value.trim();if(!pw){alert('パスワードを入力してください。');return;}if(!state.qr2?.rawBytes){alert('第2QRの暗号データがまだ取得できていません。');return;}if(!state.qr2?.version||!state.qr2?.formatInfo){alert('第2QRの復号に必要なメタ情報が不足しています。');state.mode='track';document.getElementById('passwordScreen').style.display='none';ui();return;}if(!crypto?.subtle){alert('このブラウザは復号に必要なWebCryptoに未対応です。');return;}state.appPassword=pw;state.appMask=await deriveMask(state.appPassword,state.qr2.rawBytes.length);const meta={codewords:Array.from(state.qr2.rawBytes),version:state.qr2.version,formatInfo:state.qr2.formatInfo};const dec=typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(meta,state.appMask):null;const decryptedRaw=Uint8Array.from(state.qr2.rawBytes,(v,i)=>v^state.appMask[i]);const rawMeta={codewords:Array.from(decryptedRaw),version:state.qr2.version,formatInfo:state.qr2.formatInfo};if(dec&&(dec.text||dec.data)){state.qr2=withRoi({...state.qr2,text:dec.text||dec.data,managementCode:dec.managementCode??null,management:parseManagement(dec.managementBits||dec.managementCode),rawBytes:decryptedRaw,rawData:rawMeta,isDecrypted:true},24);document.getElementById('passwordScreen').style.display='none';ui();done();if(state.running)state.mode='track';return;}alert('パスワードが違うか、データが破損しています。');document.getElementById('passwordScreen').style.display='none';state.mode='track';ui();}
-function goBack(){document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];requestAnimationFrame(loop);} 
+function submitPassword(){
+  const pw=document.getElementById('appPasswordInput').value;
+  if(pw===''){alert('パスワードを入力してください。');return;}
+  const candidates=collectDecryptCandidates();
+  if(!candidates.length){alert('第2QRの暗号データがまだ取得できていません。');return;}
+  if(typeof jsQR==='undefined'||typeof jsQR.resumeDecode!=='function'){alert('jsQR.resumeDecode が見つかりません。');return;}
+
+  state.appPassword=pw;
+  const maskCache=new Map();
+  for(const cand of candidates){
+    const meta=getRawMeta(cand);
+    if(!meta)continue;
+
+    let mask=maskCache.get(meta.codewords.length);
+    if(!mask){
+      mask=deriveMask(state.appPassword,meta.codewords.length);
+      maskCache.set(meta.codewords.length,mask);
+    }
+
+    const dec=jsQR.resumeDecode(meta,mask);
+    if(!(dec&&(dec.text||dec.data)))continue;
+
+    const decryptedRaw=Uint8Array.from(meta.codewords,(v,i)=>v^mask[i]);
+    const rawMeta={codewords:Array.from(decryptedRaw),version:meta.version,formatInfo:meta.formatInfo};
+
+    state.appMask=mask;
+    state.qr2=withRoi(mergeInfo(state.qr2,cand),24);
+    state.qr2=withRoi({...state.qr2,text:dec.text||dec.data,managementCode:dec.managementCode??null,management:parseManagement(dec.managementBits||dec.managementCode),rawBytes:decryptedRaw,rawData:rawMeta,version:meta.version,versionNumber:meta.version?.versionNumber??state.qr2?.versionNumber??null,formatInfo:meta.formatInfo,isDecrypted:true},24);
+
+    document.getElementById('passwordScreen').style.display='none';
+    ui();
+    done();
+    if(state.running)state.mode='track';
+    return;
+  }
+
+  alert('パスワードが違うか、データが破損しています。');
+  document.getElementById('passwordScreen').style.display='none';
+  state.mode='track';
+  ui();
+}
+function goBack(){document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.searchMiss=0;requestAnimationFrame(loop);} 
 window.startApp=startApp;window.submitPassword=submitPassword;window.cancelPassword=cancelPassword;window.goBack=goBack;
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+

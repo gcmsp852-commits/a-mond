@@ -1,950 +1,145 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>QRãƒE‚¤ãƒ³ ãƒªãƒ¼ãƒ€ãƒ¼</title>
-  <meta name="apple-mobile-web-app-title" content="QRãƒE‚¤ãƒ³">
-  <meta name="application-name" content="QRãƒE‚¤ãƒ³">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#121212">
-  <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
-  <link rel="manifest" href="manifest.json">
-  <script src="./jsQR.js"></script>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #121212; color: #ffffff; text-align: center; }
-    h2 { margin: 15px 0; font-size: 1.2rem; }
-    #startScreen, #resultScreen { padding: 20px; margin-top: 50px; }
-    #resultScreen { display: none; }
-    .camera-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; background: #000; display: none; }
-    video { width: 100%; display: block; object-fit: cover; }
-    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .status-panel { padding: 15px; background: #1e1e1e; border-top: 1px solid #333; text-align: left; max-width: 600px; margin: 0 auto; display: none; }
-    .qr-result { margin-bottom: 10px; padding: 10px; border-radius: 8px; background: #2c2c2c; word-break: break-all; }
-    .qr-1 { border-left: 5px solid #00E676; }
-    .qr-2 { border-left: 5px solid #29B6F6; }
-    button { width: 100%; max-width: 300px; padding: 15px; font-size: 1.1rem; font-weight: bold; background: #6200EE; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
-    button:disabled { background: #555; cursor: not-allowed; color: #aaa; }
-    #startBtn { background: #81C784; color: #121212; }
-    #startBtn:active { background: #66BB6A; }
-    #backBtn { background: #03DAC6; color: #000; margin-top: 30px; }
-    #backBtn:active { background: #018786; }
-    .smallInfo { font-size: 0.82rem; color: #9ecfff; margin: 6px 0 0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>QRãƒ„ã‚¤ãƒ³ ãƒªãƒ¼ãƒ€ãƒ¼</title>
+<meta name="theme-color" content="#121212">
+<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<script src="./jsQR.js"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#121212;color:#fff;text-align:center}
+h2{margin:14px 0;font-size:1.2rem}.camera{position:relative;max-width:640px;margin:0 auto;background:#000;display:none}
+video{width:100%;display:block;object-fit:cover}canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.panel{max-width:640px;margin:0 auto;padding:14px;background:#1e1e1e;border-top:1px solid #333;text-align:left;display:none}
+.box{margin-bottom:10px;padding:10px;border-radius:8px;background:#2c2c2c;word-break:break-all}.q1{border-left:5px solid #00E676}.q2{border-left:5px solid #29B6F6}
+button{width:100%;max-width:320px;padding:14px;font-size:1.05rem;font-weight:700;border:0;border-radius:8px;cursor:pointer;margin-top:10px;background:#6200EE;color:#fff}
+button:disabled{background:#555;color:#aaa;cursor:not-allowed}#startBtn{background:#81C784;color:#111}#backBtn{background:#03DAC6;color:#000;margin-top:30px}
+.small{font-size:.82rem;color:#9ecfff;margin:6px 0 0}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;justify-content:center;align-items:center}
+.modalCard{background:#1e1e1e;padding:20px;border-radius:8px;width:80%;max-width:400px;border:1px solid #333}
+</style>
 </head>
 <body>
-  <div id="passwordScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
-    <div style="background:#1e1e1e; padding:20px; border-radius:8px; width:80%; max-width:400px; text-align:center; border:1px solid #333;">
-      <h3 style="color:#03DAC6; margin-top:0;">ğŸ”’ ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰åEåŠE/h3>
-      <p style="font-size:0.9rem; color:#aaa; margin-bottom:20px;">
-        æš—å·åŒ–ã•ã‚ŒãŸQRãƒE‚¤ãƒ³ã‚’æ¤œåEã—ã¾ã—ãŸã€Ebr>å¾©å·ã™ã‚‹ãŸã‚ã®ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‚’å…¥åŠ›ã—ã¦ãã ã•ã„ã€E      </p>
-      <input type="password" id="appPasswordInput" placeholder="ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒE style="width:100%; padding:12px; margin-bottom:15px; border-radius:4px; border:1px solid #555; background:#2c2c2c; color:#fff; box-sizing:border-box; font-size:1rem;">
-      <button onclick="submitPassword()" style="background:#00E676; color:#000; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:1.1rem; border:none;">ä¸€ç¬ã§å¾©å·ã™ã‚‹</button>
-      <button onclick="cancelPassword()" style="background:#555; color:#fff; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:1rem; border:none; margin-top:10px;">ã‚­ãƒ£ãƒ³ã‚»ãƒ«</button>
-    </div>
+<div id="passwordScreen" class="modal">
+  <div class="modalCard">
+    <h3 style="color:#03DAC6;margin-top:0">ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰å…¥åŠ›</h3>
+    <p style="font-size:.9rem;color:#aaa">æš—å·åŒ–ã•ã‚ŒãŸç¬¬2QRã‚’æ¤œå‡ºã—ã¾ã—ãŸã€‚å¾©å·ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‚’å…¥åŠ›ã—ã¦ãã ã•ã„ã€‚</p>
+    <input id="appPasswordInput" type="password" placeholder="ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰" style="width:100%;padding:12px;margin-bottom:14px;border-radius:4px;border:1px solid #555;background:#2c2c2c;color:#fff;box-sizing:border-box;font-size:1rem">
+    <button onclick="submitPassword()" style="background:#00E676;color:#000">å¾©å·ã™ã‚‹</button>
+    <button onclick="cancelPassword()" style="background:#555">ã‚­ãƒ£ãƒ³ã‚»ãƒ«</button>
   </div>
+</div>
 
-  <h2>ğŸ“± QRãƒE‚¤ãƒ³ ãƒªãƒ¼ãƒ€ãƒ¼</h2>
+<h2>QRãƒ„ã‚¤ãƒ³ ãƒªãƒ¼ãƒ€ãƒ¼</h2>
+<div id="startScreen" style="padding:20px;margin-top:50px">
+  <p style="color:#aaa;font-size:.92rem">QRãƒ„ã‚¤ãƒ³ã€ã¾ãŸã¯é›¢ã‚ŒãŸ2ã¤ã®QRã‚³ãƒ¼ãƒ‰ã‚’èª­ã¿å–ã‚Šã¾ã™ã€‚</p>
+  <button id="startBtn" onclick="startApp()">ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã™ã‚‹</button>
+</div>
 
-  <div id="startScreen">
-    <p style="color:#aaa; font-size:0.9rem; margin-bottom:20px;">2ã¤ã®QRã‚³ãƒ¼ãƒ‰ã‚’åŒæ™‚ã«ã€ã¾ãŸãEé€£ç¶šã—ã¦èª­ã¿å–ã‚Šã¾ã™ã€E/p>
-    <button id="startBtn" onclick="startApp()">ğŸ“· ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã™ã‚E/button>
-  </div>
+<div id="cameraContainer" class="camera">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="overlayCanvas"></canvas>
+</div>
 
-  <div class="camera-container" id="cameraContainer">
-    <video id="video" playsinline autoplay muted></video>
-    <canvas id="overlayCanvas"></canvas>
-  </div>
+<div id="statusPanel" class="panel">
+  <div id="detectorInfo" style="font-size:.8rem;color:#03DAC6;font-weight:700;margin-bottom:10px">ã‚¨ãƒ³ã‚¸ãƒ³: åˆæœŸåŒ–ä¸­</div>
+  <div id="archInfo" class="small">search: æ¢ç´¢ä¸­</div>
+  <div class="box q1"><strong>ç¬¬1QR:</strong> <span id="text1">æœªæ¤œå‡º</span><br><span style="font-size:.85em;color:#ccc">ç®¡ç†16bit: <span id="mg1">--</span></span></div>
+  <div class="box q2"><strong>ç¬¬2QR:</strong> <span id="text2">æœªæ¤œå‡º</span><br><span style="font-size:.85em;color:#ccc">ç®¡ç†16bit: <span id="mg2">--</span></span></div>
+</div>
 
-  <div class="status-panel" id="statusPanel">
-    <div id="detectorInfo" style="font-size:0.8rem; color:#03DAC6; font-weight:bold; margin-bottom:10px;">âš¡ ã‚¨ãƒ³ã‚¸ãƒ³: åˆæœŸåŒ–å‰</div>
-    <div id="archInfo" class="smallInfo">search â†Etrack ROI â†Eå¿E¦æ™‚ã®ã¿å¾©å·</div>
-    <div class="qr-result qr-1">
-      <strong>1å€‹ç›®:</strong> <span id="text1">æœªæ¤œåE</span><br>
-      <span style="font-size:0.85em; color:#ccc;">ç®¡çEƒ¨16bit: <span id="mg1">--</span></span>
-    </div>
-    <div class="qr-result qr-2">
-      <strong>2å€‹ç›®:</strong> <span id="text2">æœªæ¤œåE</span><br>
-      <span style="font-size:0.85em; color:#ccc;">ç®¡çEƒ¨16bit: <span id="mg2">--</span></span>
-    </div>
-  </div>
-
-  <div id="resultScreen">
-    <h3 style="color:#00E676; margin-bottom:20px;">âœEèª­ã¿å–ã‚Šå®ŒäºE¼E/h3>
-    <div class="qr-result qr-1" style="text-align:left;">
-      <strong>1å€‹ç›®:</strong><br> <span id="finalText1"></span><br>
-      <span style="font-size:0.9em; color:#ffeb3b;">ç®¡çEƒ¨16bit: <span id="finalMg1">--</span></span>
-    </div>
-    <div class="qr-result qr-2" style="text-align:left;">
-      <strong>2å€‹ç›®:</strong><br> <span id="finalText2"></span><br>
-      <span style="font-size:0.9em; color:#ffeb3b;">ç®¡çEƒ¨16bit: <span id="finalMg2">--</span></span>
-    </div>
-    <button id="backBtn" onclick="goBack()">ğŸ”™ ã‚‚ã¨ã®ã‚«ãƒ¡ãƒ©ç”»é¢ã«æˆ»ã‚E/button>
-  </div>
+<div id="resultScreen" style="display:none;padding:20px;margin-top:50px">
+  <h3 style="color:#00E676;margin-bottom:20px">èª­ã¿å–ã‚Šå®Œäº†</h3>
+  <div class="box q1" style="text-align:left"><strong>ç¬¬1QR:</strong><br><span id="finalText1"></span><br><span style="font-size:.9em;color:#ffeb3b">ç®¡ç†16bit: <span id="finalMg1">--</span></span></div>
+  <div class="box q2" style="text-align:left"><strong>ç¬¬2QR:</strong><br><span id="finalText2"></span><br><span style="font-size:.9em;color:#ffeb3b">ç®¡ç†16bit: <span id="finalMg2">--</span></span></div>
+  <button id="backBtn" onclick="goBack()">ã‚«ãƒ¡ãƒ©ç”»é¢ã«æˆ»ã‚‹</button>
+</div>
 
 <script>
-function sha256Bytes(msgBytes){
-  const K = new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
-  function rotr(x,n){ return (x>>>n) | (x<<(32-n)); } function ch(x,y,z){ return (x & y) ^ (~x & z); } function maj(x,y,z){ return (x & y) ^ (x & z) ^ (y & z); } function s0(x){ return rotr(x,7) ^ rotr(x,18) ^ (x>>>3); } function s1(x){ return rotr(x,17) ^ rotr(x,19) ^ (x>>>10); } function S0(x){ return rotr(x,2) ^ rotr(x,13) ^ rotr(x,22); } function S1(x){ return rotr(x,6) ^ rotr(x,11) ^ rotr(x,25); }
-  const ml = msgBytes.length; const bitLenHi = Math.floor((ml * 8) / 0x100000000); const bitLenLo = (ml * 8) >>> 0; const withOne = ml + 1; let padLen = (withOne % 64 <= 56) ? (56 - (withOne % 64)) : (56 + 64 - (withOne % 64)); const totalLen = withOne + padLen + 8; const m = new Uint8Array(totalLen); m.set(msgBytes, 0); m[ml] = 0x80; const dv = new DataView(m.buffer); dv.setUint32(totalLen - 8, bitLenHi, false); dv.setUint32(totalLen - 4, bitLenLo, false);
-  let a=0x6a09e667,b=0xbb67ae85,c=0x3c6ef372,d=0xa54ff53a,e=0x510e527f,f=0x9b05688c,g=0x1f83d9ab,h=0x5be0cd19; const W = new Uint32Array(64);
-  for(let off=0; off<m.length; off+=64){ for(let i=0;i<16;i++) W[i]=dv.getUint32(off+i*4,false); for(let i=16;i<64;i++) W[i]=(s1(W[i-2]) + W[i-7] + s0(W[i-15]) + W[i-16])>>>0; let A=a,B=b,C=c,D=d,E=e,F=f,G=g,H=h; for(let i=0;i<64;i++){ const t1=(H + S1(E) + ch(E,F,G) + K[i] + W[i])>>>0; const t2=(S0(A) + maj(A,B,C))>>>0; H=G;G=F;F=E;E=(D + t1)>>>0;D=C;C=B;B=A;A=(t1 + t2)>>>0; } a=(a+A)>>>0;b=(b+B)>>>0;c=(c+C)>>>0;d=(d+D)>>>0;e=(e+E)>>>0;f=(f+F)>>>0;g=(g+G)>>>0;h=(h+H)>>>0; }
-  const out = new Uint8Array(32); const odv = new DataView(out.buffer); odv.setUint32(0,a,false);odv.setUint32(4,b,false);odv.setUint32(8,c,false);odv.setUint32(12,d,false);odv.setUint32(16,e,false);odv.setUint32(20,f,false);odv.setUint32(24,g,false);odv.setUint32(28,h,false); return out;
-}
-function utf8Bytes(str){ return new TextEncoder().encode(String(str ?? "")); }
-function deriveEncryptionMaskBytes(password, neededBytes){
-  const out = new Uint8Array(neededBytes); let filled = 0; let h = sha256Bytes(utf8Bytes(password));
-  while (filled < neededBytes) { const take = Math.min(32, neededBytes - filled); out.set(h.subarray(0, take), filled); filled += take; if (filled >= neededBytes) break; h = sha256Bytes(h); }
-  return out;
-}
-
-const video = document.getElementById('video');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const ctx = overlayCanvas.getContext('2d');
-
-const fullCanvas = document.createElement('canvas');
-const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
-
-const searchCanvas = document.createElement('canvas');
-const searchCtx = searchCanvas.getContext('2d', { willReadFrequently: true });
-
-const roiCanvas = document.createElement('canvas');
-const roiCtx = roiCanvas.getContext('2d', { willReadFrequently: true });
-
-const state = {
-  stream: null,
-  running: false,
-  starting: false,
-  rafId: 0,
-  mode: 'search', // search | track | password | paused
-  detector: null,
-  detectorName: 'jsQR ROI fallback',
-  lastProcessAt: 0,
-  searchInterval: 220,
-  trackInterval: 90,
-  qr1: null,
-  qr2: null,
-  lastSearchCandidates: [],
-  appPassword: null,
-  appMask: null,
-  lostCount: 0,
-  maxLost: 4,
-  searchScale: 960,
-};
-
-function setDetectorInfo(text) {
-  document.getElementById('detectorInfo').textContent = text;
-}
-
-function setTexts(q1Text, q2Text, mg1, mg2) {
-  document.getElementById('text1').textContent = q1Text ?? 'æœªæ¤œåE';
-  document.getElementById('text2').textContent = q2Text ?? 'æœªæ¤œåE';
-  document.getElementById('mg1').textContent = mg1 ?? '--';
-  document.getElementById('mg2').textContent = mg2 ?? '--';
-}
-
-function clonePoint(p){ return p ? { x: p.x, y: p.y } : null; }
-
-function getLocationPoints(location) {
-  if (!location) return [];
-  if (location.corners && location.corners.length >= 4) return location.corners.map(clonePoint);
-  const tl = location.topLeftCorner || location.topLeft;
-  const tr = location.topRightCorner || location.topRight;
-  const br = location.bottomRightCorner || location.bottomRight;
-  const bl = location.bottomLeftCorner || location.bottomLeft;
-  return [tl, tr, br, bl].filter(Boolean).map(clonePoint);
-}
-
-function pointsToBounds(points, pad = 0) {
-  if (!points || !points.length) return null;
-  const xs = points.map(p => p.x);
-  const ys = points.map(p => p.y);
-  const minX = Math.min(...xs) - pad;
-  const maxX = Math.max(...xs) + pad;
-  const minY = Math.min(...ys) - pad;
-  const maxY = Math.max(...ys) + pad;
-  return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
-}
-
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
-
-function clampBounds(b, maxW, maxH) {
-  const x = clamp(Math.round(b.x), 0, Math.max(0, maxW - 1));
-  const y = clamp(Math.round(b.y), 0, Math.max(0, maxH - 1));
-  const w = clamp(Math.round(b.w), 1, Math.max(1, maxW - x));
-  const h = clamp(Math.round(b.h), 1, Math.max(1, maxH - y));
-  return { x, y, w, h };
-}
-
-function expandBounds(bounds, margin, maxW, maxH) {
-  return clampBounds({
-    x: bounds.x - margin,
-    y: bounds.y - margin,
-    w: bounds.w + margin * 2,
-    h: bounds.h + margin * 2,
-  }, maxW, maxH);
-}
-
-function getCenter(points) {
-  if (!points || !points.length) return { x:0, y:0 };
-  let x = 0, y = 0;
-  for (const p of points) { x += p.x; y += p.y; }
-  return { x: x / points.length, y: y / points.length };
-}
-
-function distance(a, b) {
-  const dx = a.x - b.x, dy = a.y - b.y;
-  return Math.sqrt(dx*dx + dy*dy);
-}
-
-function managementCodeToBits(code) {
-  if (typeof code !== 'number' || !Number.isFinite(code)) return null;
-  return (code >>> 0).toString(2).padStart(16, '0').slice(-16);
-}
-
-function parseManagement(bitsOrCode) {
-  const bits = typeof bitsOrCode === 'string' ? bitsOrCode : managementCodeToBits(bitsOrCode);
-  if (!bits || bits.length !== 16) {
-    return {
-      bits: null,
-      qrNo: null,
-      sameData: false,
-      systemEncrypted: false,
-      appEncrypted: false,
-      dataType: null,
-      maskNumber: null,
-    };
-  }
-  return {
-    bits,
-    qrNo: bits[0] === '1' ? 2 : 1,
-    sameData: bits[5] === '1',
-    systemEncrypted: bits[6] === '1',
-    appEncrypted: bits[7] === '1',
-    dataType: parseInt(bits.slice(8, 11), 2),
-    maskNumber: null,
-  };
-}
-
-function mapPoints(points, scaleX, scaleY, offsetX = 0, offsetY = 0) {
-  return (points || []).map(p => ({ x: p.x * scaleX + offsetX, y: p.y * scaleY + offsetY }));
-}
-
-function drawPolygon(points, color, label) {
-  if (!points || points.length < 4) return;
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(label, points[0].x + 6, points[0].y - 8);
-  ctx.restore();
-}
-
-function drawRoi(bounds, color, label) {
-  if (!bounds) return;
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.setLineDash([8, 6]);
-  ctx.lineWidth = 2;
-  ctx.strokeRect(bounds.x, bounds.y, bounds.w, bounds.h);
-  ctx.setLineDash([]);
-  ctx.fillStyle = color;
-  ctx.font = '14px sans-serif';
-  ctx.fillText(label, bounds.x + 6, bounds.y + 18);
-  ctx.restore();
-}
-
-function clearOverlay() {
-  ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-}
-
-function updateOverlay() {
-  clearOverlay();
-  if (state.qr1?.points) drawPolygon(state.qr1.points, '#00E676', 'QR1');
-  if (state.qr2?.points) drawPolygon(state.qr2.points, '#29B6F6', 'QR2');
-  if (state.qr1?.roi) drawRoi(state.qr1.roi, 'rgba(0,230,118,0.8)', 'ROI1');
-  if (state.qr2?.roi) drawRoi(state.qr2.roi, 'rgba(41,182,246,0.8)', 'ROI2');
-}
-
-function fitToVideo() {
-  const w = video.videoWidth || 0;
-  const h = video.videoHeight || 0;
-  if (!w || !h) return false;
-  if (overlayCanvas.width !== w || overlayCanvas.height !== h) {
-    overlayCanvas.width = w;
-    overlayCanvas.height = h;
-    fullCanvas.width = w;
-    fullCanvas.height = h;
-  }
-  return true;
-}
-
-function prepareSearchCanvas() {
-  const fullW = fullCanvas.width;
-  const fullH = fullCanvas.height;
-  const scale = Math.min(1, state.searchScale / Math.max(fullW, fullH));
-  searchCanvas.width = Math.max(1, Math.round(fullW * scale));
-  searchCanvas.height = Math.max(1, Math.round(fullH * scale));
-  searchCtx.drawImage(fullCanvas, 0, 0, searchCanvas.width, searchCanvas.height);
-  return { scaleX: fullW / searchCanvas.width, scaleY: fullH / searchCanvas.height };
-}
-
-function imageDataFromCanvas(canvas, ctx2) {
-  return ctx2.getImageData(0, 0, canvas.width, canvas.height);
-}
-
-function cropFullToRoi(bounds) {
-  const b = clampBounds(bounds, fullCanvas.width, fullCanvas.height);
-  roiCanvas.width = b.w;
-  roiCanvas.height = b.h;
-  roiCtx.clearRect(0, 0, b.w, b.h);
-  roiCtx.drawImage(fullCanvas, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
-  return { bounds: b, imageData: imageDataFromCanvas(roiCanvas, roiCtx) };
-}
-
-function candidateScore(c) {
-  const mg = c.management?.bits ? 300 : 0;
-  const text = c.text ? 1000 : 0;
-  const raw = c.rawBytes ? 120 : 0;
-  return text + mg + raw + (c.score || 0);
-}
-
-function normalizeCandidate(detail, offsetX = 0, offsetY = 0, scaleX = 1, scaleY = 1) {
-  if (!detail) return null;
-  const rawPts = detail.corners || getLocationPoints(detail.location);
-  const points = mapPoints(rawPts, scaleX, scaleY, offsetX, offsetY);
-  const rawBytes = detail.rawBytes || detail.rawCodewords || detail.unmaskedCodewords || null;
-  const managementBits = detail.managementBits || detail.bitStream?.managementBits || managementCodeToBits(detail.managementCode);
-  const management = parseManagement(managementBits);
-  return {
-    text: detail.data || detail.text || null,
-    managementCode: detail.managementCode ?? null,
-    management,
-    points,
-    center: getCenter(points),
-    bounds: pointsToBounds(points, 0),
-    version: detail.version || detail.rawData?.version || null,
-    formatInfo: detail.formatInfo || detail.rawData?.formatInfo || null,
-    rawBytes: rawBytes ? Uint8Array.from(rawBytes) : null,
-    rawData: detail.rawData || (rawBytes && detail.version && detail.formatInfo ? { codewords: Array.from(rawBytes), version: detail.version, formatInfo: detail.formatInfo } : null),
-    decodeStage: detail.decodeStage || null,
-    score: detail.score || 0,
-    isDecrypted: !!detail.isDecrypted,
-  };
-}
-
-function decodeFromImageData(imgData, offsetX = 0, offsetY = 0, scaleX = 1, scaleY = 1) {
-  if (!imgData || !imgData.data || !imgData.width || !imgData.height) return [];
-
-  const results = [];
-  const toArray = (v) => (!v ? [] : (Array.isArray(v) ? v : [v]));
-  const pushNormalized = (detail) => {
-    const normalized = normalizeCandidate(detail, offsetX, offsetY, scaleX, scaleY);
-    if (normalized) results.push(normalized);
-  };
-
-  const hasExtendedApi =
-    typeof jsQR.extractQRCandidates === 'function' &&
-    typeof jsQR.decodeCandidateWithDetails === 'function' &&
-    typeof jsQR.decodeWithDetails === 'function';
-
-  if (hasExtendedApi) {
-    try {
-      const cands = jsQR.extractQRCandidates(imgData, imgData.width, imgData.height, {
-        inversionAttempts: 'dontInvert',
-        allowPartial: true,
-        returnRawCodewords: true,
-        returnBitStream: true,
-      }) || [];
-      for (const cand of cands) {
-        const detail = jsQR.decodeCandidateWithDetails(cand, {
-          allowPartial: true,
-          returnRawCodewords: true,
-          returnBitStream: true,
-          extractManagement16: true,
-          continueAfterFirstTerminator: true,
-        }) || cand;
-        pushNormalized(detail);
-      }
-    } catch (e) {
-      console.warn('extractQRCandidates failed', e);
-    }
-
-    if (!results.length) {
-      try {
-        const detail = jsQR.decodeWithDetails(imgData, imgData.width, imgData.height, {
-          inversionAttempts: 'dontInvert',
-          allowPartial: true,
-          returnRawCodewords: true,
-          returnBitStream: true,
-          extractManagement16: true,
-          continueAfterFirstTerminator: true,
-        });
-        pushNormalized(detail);
-      } catch (e) {
-        console.warn('decodeWithDetails failed', e);
-      }
-    }
-    return results.sort((a,b) => candidateScore(b) - candidateScore(a));
-  }
-
-  try {
-    const rawCandidates = toArray(jsQR(imgData.data, imgData.width, imgData.height, {
-      inversionAttempts: 'dontInvert',
-      multi: true,
-      extractRawOnly: true,
-    }));
-
-    for (const cand of rawCandidates) {
-      const rawCodewords = cand?.codewords ? Array.from(cand.codewords) : null;
-      const rawData = (rawCodewords && cand?.version && cand?.formatInfo)
-        ? { codewords: rawCodewords, version: cand.version, formatInfo: cand.formatInfo }
-        : null;
-      const decoded = (rawData && typeof jsQR.resumeDecode === 'function')
-        ? jsQR.resumeDecode(rawData, null)
-        : null;
-
-      pushNormalized({
-        location: cand?.location || null,
-        corners: cand?.corners || null,
-        data: decoded?.text || decoded?.data || null,
-        text: decoded?.text || decoded?.data || null,
-        managementCode: decoded?.managementCode ?? null,
-        rawCodewords,
-        rawData,
-        version: cand?.version || null,
-        formatInfo: cand?.formatInfo || null,
-        decodeStage: decoded ? 'resumeDecode' : 'raw-only',
-        score: decoded ? 10 : 0,
-      });
-    }
-  } catch (e) {
-    console.warn('jsQR raw candidate decode failed', e);
-  }
-
-  if (!results.length) {
-    try {
-      const decodedList = toArray(jsQR(imgData.data, imgData.width, imgData.height, {
-        inversionAttempts: 'dontInvert',
-        multi: true,
-      }));
-      for (const detail of decodedList) pushNormalized(detail);
-    } catch (e) {
-      console.warn('jsQR decode failed', e);
-    }
-  }
-
-  return results.sort((a,b) => candidateScore(b) - candidateScore(a));
-}
-
-async function detectWithBarcodeDetectorOnSearch(scaleX, scaleY) {
-  if (!state.detector) return [];
-  try {
-    const found = await state.detector.detect(searchCanvas);
-    const list = [];
-    for (const item of found) {
-      const cp = Array.isArray(item.cornerPoints) ? item.cornerPoints : null;
-      let points;
-      if (cp && cp.length >= 4) {
-        points = cp.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
-      } else if (item.boundingBox) {
-        const b = item.boundingBox;
-        points = [
-          { x: b.x * scaleX, y: b.y * scaleY },
-          { x: (b.x + b.width) * scaleX, y: b.y * scaleY },
-          { x: (b.x + b.width) * scaleX, y: (b.y + b.height) * scaleY },
-          { x: b.x * scaleX, y: (b.y + b.height) * scaleY },
-        ];
-      } else {
-        continue;
-      }
-      const b = expandBounds(pointsToBounds(points, 0), 18, fullCanvas.width, fullCanvas.height);
-      const roi = cropFullToRoi(b);
-      const decoded = decodeFromImageData(roi.imageData, roi.bounds.x, roi.bounds.y, 1, 1);
-      if (decoded.length) {
-        list.push(decoded[0]);
-      } else {
-        list.push({
-          text: item.rawValue || null,
-          management: { bits: null, qrNo: null, sameData: false, systemEncrypted: false, appEncrypted: false, dataType: null, maskNumber: null },
-          managementCode: null,
-          points,
-          center: getCenter(points),
-          bounds: pointsToBounds(points, 0),
-          rawBytes: null,
-          rawData: null,
-          version: null,
-          formatInfo: null,
-          decodeStage: 'detector-only',
-          score: 10,
-        });
-      }
-    }
-    return list;
-  } catch (e) {
-    console.warn('BarcodeDetector detect failed', e);
-    return [];
-  }
-}
-
-function chooseBestPair(candidates) {
-  if (!candidates.length) return { first:null, second:null };
-  const ordered = candidates.slice().sort((a,b) => candidateScore(b) - candidateScore(a));
-  const first = ordered[0];
-  if (ordered.length === 1) return { first, second:null };
-  const c1 = first.center;
-  let best = null;
-  let bestScore = -Infinity;
-  for (let i = 1; i < ordered.length; i++) {
-    const c = ordered[i];
-    const d = distance(c1, c.center);
-    let score = candidateScore(c) + Math.min(500, d);
-    const a1 = Math.max(1, first.bounds?.w * first.bounds?.h || 1);
-    const a2 = Math.max(1, c.bounds?.w * c.bounds?.h || 1);
-    const ratio = a1 > a2 ? a1 / a2 : a2 / a1;
-    if (ratio > 5) score -= 200;
-    if (d < 30) score -= 300;
-    if (score > bestScore) { bestScore = score; best = c; }
-  }
-  return { first, second:best };
-}
-
-function applyTrackState(first, second) {
-  state.qr1 = first ? withRoi(first, 26) : null;
-  state.qr2 = second ? withRoi(second, 26) : null;
-  state.lostCount = 0;
-  updateOverlay();
-  updateUI();
-}
-
-function withRoi(qr, margin = 20) {
-  if (!qr || !qr.bounds) return qr;
-  return { ...qr, roi: expandBounds(qr.bounds, margin, fullCanvas.width, fullCanvas.height) };
-}
-
-function shouldAskPassword() {
-  return !!(state.qr1?.management?.appEncrypted && state.qr2?.rawBytes && !state.qr2?.isDecrypted);
-}
-
-function updateUI() {
-  const qr1Text = state.qr1?.text || '–¢ŒŸo';
-  const waitingDecrypt = !!(state.qr1?.management?.appEncrypted && state.qr2?.rawBytes && !state.qr2?.isDecrypted);
-  const qr2Text = waitingDecrypt
-    ? 'Œó•â‚ ‚èi–¢•œ†j'
-    : (state.qr2?.text || (state.qr2?.rawBytes ? 'Œó•â‚ ‚èi–¢•œ†j' : '–¢ŒŸo'));
-  const mg1 = state.qr1?.management?.bits || '--';
-  const mg2 = state.qr2?.management?.bits || '--';
-  setTexts(qr1Text, qr2Text, mg1, mg2);
-
-  if (state.mode === 'search') {
-    document.getElementById('archInfo').textContent = 'search: 2QR’Tõ’†';
-  } else if (state.mode === 'track') {
-    document.getElementById('archInfo').textContent = 'track: ROI’ÇÕ’†';
-  } else if (state.mode === 'password') {
-    document.getElementById('archInfo').textContent = 'password: ‘æ2QR‚Ì•œ†‘Ò‚¿';
-  } else {
-    document.getElementById('archInfo').textContent = 'paused';
-  }
-}
-
-function finalizeIfDone() {
-  if (state.qr1?.management?.appEncrypted && !state.qr2?.isDecrypted) return false;
-  if (!state.qr1?.text || !state.qr2?.text) return false;
-  document.getElementById('finalText1').textContent = state.qr1.text;
-  document.getElementById('finalText2').textContent = state.qr2.text;
-  document.getElementById('finalMg1').textContent = state.qr1.management?.bits || '--';
-  document.getElementById('finalMg2').textContent = state.qr2.management?.bits || '--';
-  document.getElementById('resultScreen').style.display = 'block';
-  document.getElementById('cameraContainer').style.display = 'none';
-  document.getElementById('statusPanel').style.display = 'none';
-  state.mode = 'paused';
-  state.running = false;
-  return true;
-}
-
-async function processSearch() {
-  const { scaleX, scaleY } = prepareSearchCanvas();
-  let candidates = await detectWithBarcodeDetectorOnSearch(scaleX, scaleY);
-  const needFullSearch = candidates.length < 2 || candidates.some(c => !c.rawBytes && !c.management?.bits);
-  if (needFullSearch) {
-    const imgData = imageDataFromCanvas(searchCanvas, searchCtx);
-    const jsqrCandidates = decodeFromImageData(imgData, 0, 0, scaleX, scaleY);
-    candidates = mergeCandidates(candidates, jsqrCandidates);
-  }
-  state.lastSearchCandidates = candidates;
-  let { first, second } = chooseBestPair(candidates);
-
-  // ƒAƒvƒŠˆÃ†‰»‚Í‘æ2QR‚É rawBytes ‚ª•K—vBƒeƒLƒXƒg‚¾‚¯‚ÌŒó•â‚ÍÌ—p‚µ‚È‚¢B
-  if (first?.management?.appEncrypted && (!second || !second.rawBytes)) {
-    const picked = pickBestEncryptedSecond(candidates, first);
-    if (picked) second = picked;
-  }
-  if (first?.management?.appEncrypted && (!second || !second.rawBytes)) {
-    const fullResSecond = tryFullResSearchForEncryptedSecond(first);
-    if (fullResSecond) second = { ...fullResSecond, isDecrypted: false };
-  } else if (first?.management?.appEncrypted && second?.rawBytes) {
-    second = { ...second, isDecrypted: false };
-  }
-
-  if (first) {
-    applyTrackState(first, second);
-    state.mode = 'track';
-    if (shouldAskPassword()) showPasswordScreen();
-    if (!finalizeIfDone()) updateUI();
-  } else {
-    updateOverlay();
-    updateUI();
-  }
-}
-
-function mergeCandidates(a, b) {
-  const out = a.slice();
-  for (const cand of b) {
-    const dupIndex = out.findIndex(v => v?.points?.length && cand?.points?.length && distance(v.center, cand.center) < 30);
-    if (dupIndex < 0) {
-      out.push(cand);
-      continue;
-    }
-
-    const base = out[dupIndex];
-    const extra = cand;
-    const hasBaseMgmt = !!base?.management?.bits;
-    const hasExtraMgmt = !!extra?.management?.bits;
-    const points = (extra?.points?.length || 0) >= (base?.points?.length || 0) ? extra.points : base.points;
-
-    out[dupIndex] = {
-      ...base,
-      ...extra,
-      text: hasExtraMgmt ? (extra.text || base.text || null) : (base.text || extra.text || null),
-      managementCode: hasExtraMgmt ? (extra.managementCode ?? base.managementCode ?? null) : (base.managementCode ?? extra.managementCode ?? null),
-      management: hasExtraMgmt ? extra.management : (hasBaseMgmt ? base.management : (extra.management || base.management)),
-      rawBytes: extra.rawBytes || base.rawBytes || null,
-      rawData: extra.rawData || base.rawData || null,
-      version: extra.version || base.version || null,
-      formatInfo: extra.formatInfo || base.formatInfo || null,
-      points,
-      center: getCenter(points || []),
-      bounds: pointsToBounds(points || [], 0),
-      decodeStage: extra.decodeStage || base.decodeStage || null,
-      score: Math.max(base.score || 0, extra.score || 0),
-      isDecrypted: !!(base.isDecrypted || extra.isDecrypted),
-    };
-  }
-  return out.sort((x,y) => candidateScore(y) - candidateScore(x));
-}
-
-function excludeNearQr1(cands, qr1, minDistance = 40) {
-  if (!qr1?.center) return cands.slice();
-  return cands.filter(c => c?.center && distance(c.center, qr1.center) >= minDistance);
-}
-
-function pickBestEncryptedSecond(cands, qr1) {
-  const filtered = excludeNearQr1(cands, qr1, 40).filter(c => c?.rawBytes);
-  if (!filtered.length) return null;
-  filtered.sort((a, b) => {
-    const da = qr1?.center && a.center ? distance(qr1.center, a.center) : 0;
-    const db = qr1?.center && b.center ? distance(qr1.center, b.center) : 0;
-    const sa = 1200 + Math.min(500, da) + (a.score || 0);
-    const sb = 1200 + Math.min(500, db) + (b.score || 0);
-    return sb - sa;
-  });
-  return { ...filtered[0], isDecrypted: false } || null;
-}
-
-function fullResCandidates() {
-  const imgData = imageDataFromCanvas(fullCanvas, fullCtx);
-  return decodeFromImageData(imgData, 0, 0, 1, 1);
-}
-
-function tryFullResSearchForEncryptedSecond(qr1) {
-  if (!qr1?.management?.appEncrypted) return null;
-  const full = fullResCandidates();
-  state.lastSearchCandidates = mergeCandidates(state.lastSearchCandidates || [], full);
-  return pickBestEncryptedSecond(full, qr1);
-}
-
-function decodeInTrackedRoi(entry) {
-  if (!entry?.roi) return null;
-  const roi = cropFullToRoi(entry.roi);
-  const decoded = decodeFromImageData(roi.imageData, roi.bounds.x, roi.bounds.y, 1, 1);
-  if (!decoded.length) return null;
-  return withRoi(decoded[0], 24);
-}
-
-async function processTrack() {
-  const next1 = decodeInTrackedRoi(state.qr1);
-  const next2 = decodeInTrackedRoi(state.qr2);
-  if (next1) state.qr1 = next1;
-  if (next2) state.qr2 = next2;
-
-  // ‘æ1QR‚ªƒAƒvƒŠˆÃ†‰»‚Ì‚ÍA‘æ2QR‚Ì rawBytes ‚ª•K{B
-  // rawBytes ‚ª–¢æ“¾‚È‚çƒtƒ‹‰ğ‘œ“x‚Å‘æ2Œó•â‚ğ•âŠ®‚·‚éB
-  if (state.qr1?.management?.appEncrypted && (!state.qr2 || !state.qr2.rawBytes)) {
-    const fullResSecond = tryFullResSearchForEncryptedSecond(state.qr1);
-    if (fullResSecond) state.qr2 = withRoi({ ...fullResSecond, isDecrypted: false }, 24);
-  }
-
-  if (!next1 && !next2) {
-    state.lostCount += 1;
-  } else {
-    state.lostCount = 0;
-  }
-
-  if (state.lostCount >= state.maxLost) {
-    state.mode = 'search';
-    state.qr1 = null;
-    state.qr2 = null;
-    updateOverlay();
-    updateUI();
-    return;
-  }
-
-  if ((!state.qr2 || (state.qr1?.management?.appEncrypted && !state.qr2.rawBytes)) && state.lastSearchCandidates.length > 1) {
-    const second = state.qr1?.management?.appEncrypted
-      ? pickBestEncryptedSecond(state.lastSearchCandidates, state.qr1)
-      : chooseBestPair(state.lastSearchCandidates).second;
-    if (second) state.qr2 = withRoi(second, 24);
-  }
-
-  updateOverlay();
-  updateUI();
-
-  if (shouldAskPassword()) {
-    showPasswordScreen();
-    return;
-  }
-
-  finalizeIfDone();
-}
-
-async function scanLoop() {
-  if (!state.running) return;
-  state.rafId = requestAnimationFrame(scanLoop);
-
-  const now = performance.now();
-  const interval = state.mode === 'track' ? state.trackInterval : state.searchInterval;
-  if (now - state.lastProcessAt < interval) return;
-  state.lastProcessAt = now;
-
-  if (!fitToVideo()) return;
-
-  fullCtx.drawImage(video, 0, 0, fullCanvas.width, fullCanvas.height);
-
-  if (state.mode === 'password' || state.mode === 'paused') {
-    updateOverlay();
-    return;
-  }
-
-  try {
-    if (state.mode === 'search') {
-      await processSearch();
-    } else {
-      await processTrack();
-    }
-  } catch (e) {
-    console.error(e);
-    document.getElementById('archInfo').textContent = 'error: ' + String(e?.message || e);
-    state.mode = 'search';
-  }
-}
-
-async function createDetector() {
-  if (!('BarcodeDetector' in window)) {
-    state.detector = null;
-    state.detectorName = 'jsQR only';
-    setDetectorInfo('âš¡ ã‚¨ãƒ³ã‚¸ãƒ³: jsQR ROI fallback');
-    return;
-  }
-  try {
-    const supported = await BarcodeDetector.getSupportedFormats();
-    if (supported.includes('qr_code')) {
-      state.detector = new BarcodeDetector({ formats: ['qr_code'] });
-      state.detectorName = 'BarcodeDetector + jsQR ROI';
-      setDetectorInfo('âš¡ ã‚¨ãƒ³ã‚¸ãƒ³: BarcodeDetector + jsQR ROI');
-      return;
-    }
-  } catch (e) {
-    console.warn(e);
-  }
-  state.detector = null;
-  state.detectorName = 'jsQR only';
-  setDetectorInfo('âš¡ ã‚¨ãƒ³ã‚¸ãƒ³: jsQR ROI fallback');
-}
-
-async function startCamera() {
-  if (state.starting) return false;
-  state.starting = true;
-  try {
-    if (state.stream) {
-      for (const tr of state.stream.getTracks()) tr.stop();
-      state.stream = null;
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-    state.stream = stream;
-    video.srcObject = stream;
-    await new Promise((resolve) => {
-      if (video.readyState >= 1) return resolve();
-      video.addEventListener('loadedmetadata', resolve, { once:true });
-    });
-    await video.play().catch(() => {});
-    return true;
-  } catch (err) {
-    alert("ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã§ãã¾ã›ã‚“ã§ã—ãŸã€Enã‚¨ãƒ©ãƒ¼: " + err.message);
-    return false;
-  } finally {
-    state.starting = false;
-  }
-}
-
-function stopCamera() {
-  state.running = false;
-  cancelAnimationFrame(state.rafId);
-  state.rafId = 0;
-  try { video.pause(); } catch {}
-  if (state.stream) {
-    for (const tr of state.stream.getTracks()) tr.stop();
-    state.stream = null;
-  }
-  video.srcObject = null;
-}
-
-async function startApp() {
-  const startBtn = document.getElementById('startBtn');
-  startBtn.disabled = true;
-  startBtn.innerText = "‹N“®’†...";
-
-  if (typeof jsQR === 'undefined') {
-    alert("jsQR.js ‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚Ü‚µ‚½B");
-    startBtn.disabled = false;
-    startBtn.innerText = "ƒJƒƒ‰‚ğ‹N“®‚·‚é";
-    return;
-  }
-
-  await createDetector();
-  const success = await startCamera();
-  if (!success) {
-    startBtn.disabled = false;
-    startBtn.innerText = "ƒJƒƒ‰‚ğ‹N“®‚·‚é";
-    return;
-  }
-
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('resultScreen').style.display = 'none';
-  document.getElementById('cameraContainer').style.display = 'block';
-  document.getElementById('statusPanel').style.display = 'block';
-  state.mode = 'search';
-  state.running = true;
-  state.lastProcessAt = 0;
-  state.qr1 = null;
-  state.qr2 = null;
-  state.appPassword = null;
-  state.appMask = null;
-  state.lostCount = 0;
-  updateUI();
-  requestAnimationFrame(scanLoop);
-}
-
-function showPasswordScreen() {
-  state.mode = 'password';
-  document.getElementById('appPasswordInput').value = "";
-  document.getElementById('passwordScreen').style.display = 'flex';
-  updateUI();
-}
-
-function cancelPassword() {
-  document.getElementById('passwordScreen').style.display = 'none';
-  state.mode = 'track';
-  updateUI();
-}
-
-async function submitPassword() {
-  const pw = document.getElementById('appPasswordInput').value.trim();
-  if (!pw) {
-    alert('ƒpƒXƒ[ƒh‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢B');
-    return;
-  }
-  if (!state.qr2?.rawBytes) {
-    alert('‘æ2QR‚ÌˆÃ†ƒf[ƒ^‚ª‚Ü‚¾æ“¾‚Å‚«‚Ä‚¢‚Ü‚¹‚ñB');
-    return;
-  }
-  if (!state.qr2?.version || !state.qr2?.formatInfo) {
-    alert('‘æ2QR‚Ì•œ†‚É•K—v‚Èƒƒ^î•ñ‚ª•s‘«‚µ‚Ä‚¢‚Ü‚·B‚à‚¤ˆê“x‚©‚´‚µ‚Ä‚­‚¾‚³‚¢B');
-    state.mode = 'track';
-    document.getElementById('passwordScreen').style.display = 'none';
-    updateUI();
-    return;
-  }
-
-  state.appPassword = pw;
-  state.appMask = deriveEncryptionMaskBytes(state.appPassword, state.qr2.rawBytes.length);
-  const encryptedMeta = {
-    codewords: Array.from(state.qr2.rawBytes),
-    version: state.qr2.version,
-    formatInfo: state.qr2.formatInfo,
-  };
-  const decoded = (typeof jsQR.resumeDecode === 'function')
-    ? jsQR.resumeDecode(encryptedMeta, state.appMask)
-    : null;
-
-  const decryptedRaw = Uint8Array.from(state.qr2.rawBytes, (v, i) => v ^ state.appMask[i]);
-  const rawMeta = {
-    codewords: Array.from(decryptedRaw),
-    version: state.qr2.version,
-    formatInfo: state.qr2.formatInfo,
-  };
-
-  if (decoded && (decoded.text || decoded.data)) {
-    const management = parseManagement(decoded.managementBits || decoded.managementCode);
-    state.qr2 = withRoi({
-      ...state.qr2,
-      text: decoded.text || decoded.data,
-      managementCode: decoded.managementCode ?? null,
-      management,
-      rawBytes: decryptedRaw,
-      rawData: rawMeta,
-      isDecrypted: true,
-    }, 24);
-    document.getElementById('passwordScreen').style.display = 'none';
-    updateUI();
-    finalizeIfDone();
-    if (state.running) state.mode = 'track';
-    return;
-  }
-
-  alert('ƒpƒXƒ[ƒh‚ªˆá‚¤‚©Aƒf[ƒ^‚ª”j‘¹‚µ‚Ä‚¢‚Ü‚·B');
-  document.getElementById('passwordScreen').style.display = 'none';
-  state.mode = 'track';
-  updateUI();
-}
-
-function goBack() {
-  document.getElementById('resultScreen').style.display = 'none';
-  document.getElementById('cameraContainer').style.display = 'block';
-  document.getElementById('statusPanel').style.display = 'block';
-  state.mode = 'search';
-  state.running = true;
-  state.lastProcessAt = 0;
-  requestAnimationFrame(scanLoop);
-}
-
-window.startApp = startApp;
-window.submitPassword = submitPassword;
-window.cancelPassword = cancelPassword;
-window.goBack = goBack;
+"use strict";
+const video=document.getElementById('video');
+const overlayCanvas=document.getElementById('overlayCanvas');
+const ctx=overlayCanvas.getContext('2d');
+const fullCanvas=document.createElement('canvas');
+const fullCtx=fullCanvas.getContext('2d',{willReadFrequently:true});
+const searchCanvas=document.createElement('canvas');
+const searchCtx=searchCanvas.getContext('2d',{willReadFrequently:true});
+const roiCanvas=document.createElement('canvas');
+const roiCtx=roiCanvas.getContext('2d',{willReadFrequently:true});
+
+const state={stream:null,running:false,starting:false,rafId:0,mode:'search',detector:null,lastProcessAt:0,searchInterval:130,trackInterval:65,searchScale:960,qr1:null,qr2:null,lastSearchCandidates:[],appPassword:null,appMask:null,lostCount:0,maxLost:6};
+
+const arr=v=>!v?[]:Array.isArray(v)?v:[v];
+const txt=(id,v)=>document.getElementById(id).textContent=v;
+const cpy=p=>p?{x:p.x,y:p.y}:null;
+const center=ps=>{if(!ps?.length)return{x:0,y:0};let x=0,y=0;for(const p of ps){x+=p.x;y+=p.y;}return{x:x/ps.length,y:y/ps.length};};
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+function mgCodeToBits(code){if(typeof code!=='number'||!Number.isFinite(code))return null;return (code>>>0).toString(2).padStart(16,'0').slice(-16);}
+function parseManagement(bitsOrCode){const bits=typeof bitsOrCode==='string'?bitsOrCode:mgCodeToBits(bitsOrCode);if(!bits||bits.length!==16)return{bits:null,qrNo:null,sameData:false,systemEncrypted:false,appEncrypted:false,dataType:null};return{bits,qrNo:bits[0]==='1'?2:1,sameData:bits[5]==='1',systemEncrypted:bits[6]==='1',appEncrypted:bits[7]==='1',dataType:parseInt(bits.slice(8,11),2)};}
+function locPoints(loc){if(!loc)return[];if(loc.corners?.length>=4)return loc.corners.map(cpy);const tl=loc.topLeftCorner||loc.topLeft,tr=loc.topRightCorner||loc.topRight,br=loc.bottomRightCorner||loc.bottomRight,bl=loc.bottomLeftCorner||loc.bottomLeft;return[tl,tr,br,bl].filter(Boolean).map(cpy);}
+function mapPoints(ps,sx,sy,ox=0,oy=0){return(ps||[]).map(p=>({x:p.x*sx+ox,y:p.y*sy+oy}));}
+function bounds(ps,pad=0){if(!ps?.length)return null;const xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);const minX=Math.min(...xs)-pad,maxX=Math.max(...xs)+pad,minY=Math.min(...ys)-pad,maxY=Math.max(...ys)+pad;return{x:minX,y:minY,w:maxX-minX,h:maxY-minY};}
+function clampBounds(b,maxW,maxH){const x=clamp(Math.round(b.x),0,Math.max(0,maxW-1)),y=clamp(Math.round(b.y),0,Math.max(0,maxH-1));const w=clamp(Math.round(b.w),1,Math.max(1,maxW-x)),h=clamp(Math.round(b.h),1,Math.max(1,maxH-y));return{x,y,w,h};}
+function expandBounds(b,m,maxW,maxH){if(!b)return null;return clampBounds({x:b.x-m,y:b.y-m,w:b.w+m*2,h:b.h+m*2},maxW,maxH);}
+
+function normalizeCandidate(detail,ox=0,oy=0,sx=1,sy=1){if(!detail)return null;const pts=mapPoints(detail.corners||locPoints(detail.location),sx,sy,ox,oy);if(pts.length<4)return null;const raw=detail.rawBytes||detail.rawCodewords||null;const mgBits=detail.managementBits||detail.bitStream?.managementBits||mgCodeToBits(detail.managementCode);return{text:detail.data||detail.text||null,managementCode:detail.managementCode??null,management:parseManagement(mgBits),points:pts,center:center(pts),bounds:bounds(pts,0),version:detail.version||detail.rawData?.version||null,formatInfo:detail.formatInfo||detail.rawData?.formatInfo||null,rawBytes:raw?Uint8Array.from(raw):null,rawData:detail.rawData||(raw&&detail.version&&detail.formatInfo?{codewords:Array.from(raw),version:detail.version,formatInfo:detail.formatInfo}:null),decodeStage:detail.decodeStage||null,score:detail.score||0,isDecrypted:!!detail.isDecrypted};}
+
+function cScore(c){if(!c)return-Infinity;let s=0;if(c.text)s+=1200;if(c.management?.bits)s+=300;if(c.rawBytes)s+=500;if(c.version&&c.formatInfo)s+=80;if(c.points?.length>=4)s+=120;s+=Math.min(180,Math.round(Math.sqrt(Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)))));return s+(c.score||0);}
+function mergeInfo(a,b){if(!a)return b;if(!b)return a;const p=(b.points?.length||0)>=(a.points?.length||0)?b.points:a.points;const bmg=!!b.management?.bits,amg=!!a.management?.bits;return{...a,...b,text:bmg?(b.text||a.text||null):(a.text||b.text||null),managementCode:bmg?(b.managementCode??a.managementCode??null):(a.managementCode??b.managementCode??null),management:bmg?b.management:(amg?a.management:(b.management||a.management)),rawBytes:b.rawBytes||a.rawBytes||null,rawData:b.rawData||a.rawData||null,version:b.version||a.version||null,formatInfo:b.formatInfo||a.formatInfo||null,points:p,center:center(p||[]),bounds:bounds(p||[],0),decodeStage:b.decodeStage||a.decodeStage||null,score:Math.max(a.score||0,b.score||0),isDecrypted:!!(a.isDecrypted||b.isDecrypted)};}
+function mergeCandidates(a,b){const out=a.slice();for(const c of b){const i=out.findIndex(v=>v?.points?.length&&c?.points?.length&&dist(v.center,c.center)<28);if(i<0)out.push(c);else out[i]=mergeInfo(out[i],c);}return out.sort((x,y)=>cScore(y)-cScore(x));}
+
+function decodeFast(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{return arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true})).map(d=>normalizeCandidate(d,ox,oy,sx,sy)).filter(Boolean).sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeFast',e);return[];}}
+function decodeRaw(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{const out=[];for(const cand of arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true,extractRawOnly:true}))){const raw=cand?.codewords?Array.from(cand.codewords):null;const rawData=raw&&cand?.version&&cand?.formatInfo?{codewords:raw,version:cand.version,formatInfo:cand.formatInfo}:null;const resumed=rawData&&typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(rawData,null):null;const n=normalizeCandidate({location:cand?.location||null,corners:cand?.corners||null,data:resumed?.text||resumed?.data||null,text:resumed?.text||resumed?.data||null,managementCode:resumed?.managementCode??null,rawCodewords:raw,rawData,version:cand?.version||null,formatInfo:cand?.formatInfo||null,decodeStage:resumed?'raw+resume':'raw',score:resumed?20:0},ox,oy,sx,sy);if(n)out.push(n);}return out.sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeRaw',e);return[];}}
+
+function chooseBestPair(cands){const v=cands.filter(c=>c?.points?.length>=4);if(!v.length)return{first:null,second:null};const ord=v.slice().sort((a,b)=>cScore(b)-cScore(a));const first=ord.find(c=>c.management?.qrNo===1)||ord[0];const others=ord.filter(c=>c!==first&&dist(c.center,first.center)>24);if(!others.length)return{first,second:null};const pScore=c=>{const d=dist(first.center,c.center);let s=cScore(c)+Math.min(600,d);if(d<30)s-=500;const a1=Math.max(1,(first.bounds?.w||1)*(first.bounds?.h||1)),a2=Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1));if((a1>a2?a1/a2:a2/a1)>7)s-=260;return s;};others.sort((a,b)=>pScore(b)-pScore(a));return{first,second:others[0]||null};}
+function excludeNear(cands,qr1,min=40){if(!qr1?.center)return cands.slice();return cands.filter(c=>c?.center&&dist(c.center,qr1.center)>=min);}
+function pickEncryptedSecond(cands,qr1){const f=excludeNear(cands,qr1,40).filter(c=>c?.rawBytes&&c?.version&&c?.formatInfo);if(!f.length)return null;f.sort((a,b)=>{const da=qr1?.center&&a.center?dist(qr1.center,a.center):0,db=qr1?.center&&b.center?dist(qr1.center,b.center):0;const sa=1200+Math.min(500,da)+(a.score||0),sb=1200+Math.min(500,db)+(b.score||0);return sb-sa;});return{...f[0],text:null,isDecrypted:false};}
+
+function withRoi(q,m=20){if(!q?.bounds)return q;return{...q,roi:expandBounds(q.bounds,m,fullCanvas.width,fullCanvas.height)};}
+function cropRoi(b){if(!b)return null;const c=clampBounds(b,fullCanvas.width,fullCanvas.height);roiCanvas.width=c.w;roiCanvas.height=c.h;roiCtx.clearRect(0,0,c.w,c.h);roiCtx.drawImage(fullCanvas,c.x,c.y,c.w,c.h,0,0,c.w,c.h);return{bounds:c,imageData:roiCtx.getImageData(0,0,c.w,c.h)};}
+function drawPoly(ps,col,label){if(!ps||ps.length<4)return;ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);for(let i=1;i<ps.length;i++)ctx.lineTo(ps[i].x,ps[i].y);ctx.closePath();ctx.stroke();ctx.fillStyle=col;ctx.font='bold 18px sans-serif';ctx.fillText(label,ps[0].x+6,ps[0].y-8);ctx.restore();}
+function drawRoi(b,col,label){if(!b)return;ctx.save();ctx.strokeStyle=col;ctx.setLineDash([8,6]);ctx.lineWidth=2;ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.setLineDash([]);ctx.fillStyle=col;ctx.font='14px sans-serif';ctx.fillText(label,b.x+6,b.y+18);ctx.restore();}
+function overlay(){ctx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);if(state.qr1?.points)drawPoly(state.qr1.points,'#00E676','QR1');if(state.qr2?.points)drawPoly(state.qr2.points,'#29B6F6','QR2');if(state.qr1?.roi)drawRoi(state.qr1.roi,'rgba(0,230,118,.85)','ROI1');if(state.qr2?.roi)drawRoi(state.qr2.roi,'rgba(41,182,246,.85)','ROI2');}
+
+function fitVideo(){const w=video.videoWidth||0,h=video.videoHeight||0;if(!w||!h)return false;if(overlayCanvas.width!==w||overlayCanvas.height!==h){overlayCanvas.width=w;overlayCanvas.height=h;fullCanvas.width=w;fullCanvas.height=h;}return true;}
+function prepSearch(){const fw=fullCanvas.width,fh=fullCanvas.height,scale=Math.min(1,state.searchScale/Math.max(fw,fh));searchCanvas.width=Math.max(1,Math.round(fw*scale));searchCanvas.height=Math.max(1,Math.round(fh*scale));searchCtx.drawImage(fullCanvas,0,0,searchCanvas.width,searchCanvas.height);return{sx:fw/searchCanvas.width,sy:fh/searchCanvas.height};}
+
+async function detectByBarcodeDetector(sx,sy){if(!state.detector)return[];try{const found=await state.detector.detect(searchCanvas);const list=[];for(const item of found){let ps=null;const cp=Array.isArray(item.cornerPoints)?item.cornerPoints:null;if(cp&&cp.length>=4)ps=cp.map(p=>({x:p.x*sx,y:p.y*sy}));else if(item.boundingBox){const b=item.boundingBox;ps=[{x:b.x*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:(b.y+b.height)*sy},{x:b.x*sx,y:(b.y+b.height)*sy}];}if(!ps)continue;const b=expandBounds(bounds(ps,0),16,fullCanvas.width,fullCanvas.height);const roi=cropRoi(b);if(!roi)continue;const dec=decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);if(dec.length)list.push(dec[0]);}return list;}catch(e){console.warn('detector',e);return[];}}
+
+function askPwNeeded(){return !!(state.qr1?.management?.appEncrypted&&state.qr2?.rawBytes&&!state.qr2?.isDecrypted);}
+function ui(){const wait=askPwNeeded();txt('text1',state.qr1?.text||'æœªæ¤œå‡º');txt('text2',wait?'å€™è£œã‚ã‚Šï¼ˆæœªå¾©å·ï¼‰':(state.qr2?.text||(state.qr2?.rawBytes?'å€™è£œã‚ã‚Šï¼ˆæœªå¾©å·ï¼‰':'æœªæ¤œå‡º')));txt('mg1',state.qr1?.management?.bits||'--');txt('mg2',state.qr2?.management?.bits||'--');txt('archInfo',state.mode==='search'?'search: 2QRæ¢ç´¢ä¸­':state.mode==='track'?'track: ROIè¿½è·¡ä¸­':state.mode==='password'?'password: ç¬¬2QRã®å¾©å·å¾…ã¡':'paused');}
+function done(){if(state.qr1?.management?.appEncrypted&&!state.qr2?.isDecrypted)return false;if(!state.qr1?.text||!state.qr2?.text)return false;txt('finalText1',state.qr1.text);txt('finalText2',state.qr2.text);txt('finalMg1',state.qr1.management?.bits||'--');txt('finalMg2',state.qr2.management?.bits||'--');document.getElementById('resultScreen').style.display='block';document.getElementById('cameraContainer').style.display='none';document.getElementById('statusPanel').style.display='none';state.mode='paused';state.running=false;return true;}
+
+function fullFast(){const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);const sx=fullCanvas.width/searchCanvas.width,sy=fullCanvas.height/searchCanvas.height;return decodeFast(img,0,0,sx,sy);}
+function fullRaw(){const img=fullCtx.getImageData(0,0,fullCanvas.width,fullCanvas.height);return decodeRaw(img,0,0,1,1);}
+function rawInBounds(b){const roi=cropRoi(b);return roi?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):[];}
+function tryFullRawSecond(qr1){if(!qr1?.management?.appEncrypted)return null;const raw=fullRaw();state.lastSearchCandidates=mergeCandidates(state.lastSearchCandidates||[],raw);return pickEncryptedSecond(raw,qr1);}
+function decodeTrack(entry,rawMode=false){if(!entry?.roi)return null;const roi=cropRoi(entry.roi);if(!roi)return null;const d=rawMode?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);return d.length?withRoi(d[0],24):null;}
+
+async function processSearch(){const {sx,sy}=prepSearch();let cands=await detectByBarcodeDetector(sx,sy);if(cands.length<2)cands=mergeCandidates(cands,fullFast());state.lastSearchCandidates=cands;let {first,second}=chooseBestPair(cands);if(first?.management?.appEncrypted){let raw=[];if(second?.bounds)raw=mergeCandidates(raw,rawInBounds(expandBounds(second.bounds,20,fullCanvas.width,fullCanvas.height)));if(!raw.length){const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);raw=mergeCandidates(raw,decodeRaw(img,0,0,sx,sy));}if(!raw.length)raw=mergeCandidates(raw,fullRaw());cands=mergeCandidates(cands,raw);state.lastSearchCandidates=cands;const rs=pickEncryptedSecond(cands,first);if(rs)second=rs;}if(first){state.qr1=withRoi(first,24);state.qr2=second?withRoi(second,24):null;state.lostCount=0;state.mode='track';overlay();ui();if(askPwNeeded()){showPasswordScreen();return;}done();}else{overlay();ui();}}
+
+async function processTrack(){const n1=decodeTrack(state.qr1,false),n2=decodeTrack(state.qr2,false);if(n1)state.qr1=withRoi(mergeInfo(state.qr1,n1),24);if(n2)state.qr2=withRoi(mergeInfo(state.qr2,n2),24);if(state.qr1?.management?.appEncrypted&&(!state.qr2?.rawBytes||!state.qr2?.version||!state.qr2?.formatInfo)){let r2=decodeTrack(state.qr2,true);if(!r2&&state.qr2?.bounds){const near=rawInBounds(expandBounds(state.qr2.bounds,20,fullCanvas.width,fullCanvas.height));r2=near.length?withRoi(near[0],24):null;}if(!r2)r2=tryFullRawSecond(state.qr1);if(r2)state.qr2=withRoi(mergeInfo(state.qr2,r2),24);}if(!n1&&!n2)state.lostCount++;else state.lostCount=0;if(state.lostCount>=state.maxLost){state.mode='search';state.qr1=null;state.qr2=null;overlay();ui();return;}if((!state.qr2||(state.qr1?.management?.appEncrypted&&!state.qr2.rawBytes))&&state.lastSearchCandidates.length>1){const sec=state.qr1?.management?.appEncrypted?pickEncryptedSecond(state.lastSearchCandidates,state.qr1):chooseBestPair(state.lastSearchCandidates).second;if(sec)state.qr2=withRoi(mergeInfo(state.qr2,sec),24);}overlay();ui();if(askPwNeeded()){showPasswordScreen();return;}done();}
+
+async function loop(){if(!state.running)return;state.rafId=requestAnimationFrame(loop);const now=performance.now(),intv=state.mode==='track'?state.trackInterval:state.searchInterval;if(now-state.lastProcessAt<intv)return;state.lastProcessAt=now;if(!fitVideo())return;fullCtx.drawImage(video,0,0,fullCanvas.width,fullCanvas.height);if(state.mode==='password'||state.mode==='paused'){overlay();return;}try{if(state.mode==='search')await processSearch();else await processTrack();}catch(e){console.error(e);txt('archInfo','error: '+String(e?.message||e));state.mode='search';}}
+
+async function createDetector(){if(!('BarcodeDetector'in window)){state.detector=null;txt('detectorInfo','ã‚¨ãƒ³ã‚¸ãƒ³: jsQR ROI');return;}try{const s=await BarcodeDetector.getSupportedFormats();if(s.includes('qr_code')){state.detector=new BarcodeDetector({formats:['qr_code']});txt('detectorInfo','ã‚¨ãƒ³ã‚¸ãƒ³: BarcodeDetector + jsQR ROI');return;}}catch(e){console.warn(e);}state.detector=null;txt('detectorInfo','ã‚¨ãƒ³ã‚¸ãƒ³: jsQR ROI');}
+
+async function startCamera(){if(state.starting)return false;state.starting=true;try{if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});state.stream=stream;video.srcObject=stream;await new Promise(r=>{if(video.readyState>=1)return r();video.addEventListener('loadedmetadata',r,{once:true});});await video.play().catch(()=>{});return true;}catch(err){alert('ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã§ãã¾ã›ã‚“ã§ã—ãŸã€‚\nã‚¨ãƒ©ãƒ¼: '+(err?.message||err));return false;}finally{state.starting=false;}}
+function stopCamera(){state.running=false;cancelAnimationFrame(state.rafId);state.rafId=0;try{video.pause();}catch{}if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}video.srcObject=null;}
+
+async function sha256(bytes){const b=await crypto.subtle.digest('SHA-256',bytes);return new Uint8Array(b);} 
+async function deriveMask(password,needed){const out=new Uint8Array(needed);let filled=0;let h=await sha256(new TextEncoder().encode(String(password??'')));while(filled<needed){const take=Math.min(32,needed-filled);out.set(h.subarray(0,take),filled);filled+=take;if(filled>=needed)break;h=await sha256(h);}return out;}
+
+async function startApp(){const b=document.getElementById('startBtn');b.disabled=true;b.innerText='èµ·å‹•ä¸­...';if(typeof jsQR==='undefined'){alert('jsQR.js ã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸã€‚');b.disabled=false;b.innerText='ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã™ã‚‹';return;}await createDetector();if(!await startCamera()){b.disabled=false;b.innerText='ã‚«ãƒ¡ãƒ©ã‚’èµ·å‹•ã™ã‚‹';return;}document.getElementById('startScreen').style.display='none';document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.appPassword=null;state.appMask=null;state.lostCount=0;ui();requestAnimationFrame(loop);} 
+function showPasswordScreen(){state.mode='password';document.getElementById('appPasswordInput').value='';document.getElementById('passwordScreen').style.display='flex';ui();}
+function cancelPassword(){document.getElementById('passwordScreen').style.display='none';state.mode='track';ui();}
+async function submitPassword(){const pw=document.getElementById('appPasswordInput').value.trim();if(!pw){alert('ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‚’å…¥åŠ›ã—ã¦ãã ã•ã„ã€‚');return;}if(!state.qr2?.rawBytes){alert('ç¬¬2QRã®æš—å·ãƒ‡ãƒ¼ã‚¿ãŒã¾ã å–å¾—ã§ãã¦ã„ã¾ã›ã‚“ã€‚');return;}if(!state.qr2?.version||!state.qr2?.formatInfo){alert('ç¬¬2QRã®å¾©å·ã«å¿…è¦ãªãƒ¡ã‚¿æƒ…å ±ãŒä¸è¶³ã—ã¦ã„ã¾ã™ã€‚');state.mode='track';document.getElementById('passwordScreen').style.display='none';ui();return;}if(!crypto?.subtle){alert('ã“ã®ãƒ–ãƒ©ã‚¦ã‚¶ã¯å¾©å·ã«å¿…è¦ãªWebCryptoã«æœªå¯¾å¿œã§ã™ã€‚');return;}state.appPassword=pw;state.appMask=await deriveMask(state.appPassword,state.qr2.rawBytes.length);const meta={codewords:Array.from(state.qr2.rawBytes),version:state.qr2.version,formatInfo:state.qr2.formatInfo};const dec=typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(meta,state.appMask):null;const decryptedRaw=Uint8Array.from(state.qr2.rawBytes,(v,i)=>v^state.appMask[i]);const rawMeta={codewords:Array.from(decryptedRaw),version:state.qr2.version,formatInfo:state.qr2.formatInfo};if(dec&&(dec.text||dec.data)){state.qr2=withRoi({...state.qr2,text:dec.text||dec.data,managementCode:dec.managementCode??null,management:parseManagement(dec.managementBits||dec.managementCode),rawBytes:decryptedRaw,rawData:rawMeta,isDecrypted:true},24);document.getElementById('passwordScreen').style.display='none';ui();done();if(state.running)state.mode='track';return;}alert('ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ãŒé•ã†ã‹ã€ãƒ‡ãƒ¼ã‚¿ãŒç ´æã—ã¦ã„ã¾ã™ã€‚');document.getElementById('passwordScreen').style.display='none';state.mode='track';ui();}
+function goBack(){document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];requestAnimationFrame(loop);} 
+window.startApp=startApp;window.submitPassword=submitPassword;window.cancelPassword=cancelPassword;window.goBack=goBack;
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-(function webpackUniversalModuleDefinition(root, factory) {
+﻿(function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
 	else if(typeof define === 'function' && define.amd)
@@ -340,8 +340,7 @@ function scan(matrix, options) {
     var locations = locator_1.locate(matrix);
     if (!locations)
         return null;
-    var results = []; // ★ 追加：結果を格納する配列
-    for (var _i = 0, locations_1 = locations; _i < locations_1.length; _i++) {
+    var results = []; // 笘・霑ｽ蜉・夂ｵ先棡繧呈ｼ邏阪☆繧矩・蛻・    for (var _i = 0, locations_1 = locations; _i < locations_1.length; _i++) {
         var location_1 = locations_1[_i];
         var extracted = extractor_1.extract(matrix, location_1);
         var decoded = decoder_1.decode(extracted.matrix, options);
@@ -377,18 +376,30 @@ function scan(matrix, options) {
                         bottomRightAlignmentPattern: location_1.alignmentPattern,
                     },
                     matrix: matrix,
+                    isRaw: decoded.isRaw,
+                    codewords: decoded.codewords,
+                    formatInfo: decoded.formatInfo,
+                    rawMatrixData: decoded.rawMatrixData
                 };
             }
             if (options && options.multi) {
-                results.push(res); // ★ multiモードなら配列に追加して続行
-            }
+                results.push(res); // 笘・multi繝｢繝ｼ繝峨↑繧蛾・蛻励↓霑ｽ蜉縺励※邯夊｡・            }
             else {
-                return res; // ★ 従来通り1つ目で終了
+                // multi: false 縺縺後∵歓蜃ｺ縺励◆繝・・繧ｿ縺軍AW(蠕ｩ蜿ｷ螟ｱ謨・縺縺｣縺溷ｴ蜷医・                // 莉悶↓繧ゅ▲縺ｨ濶ｯ縺・呵｣懶ｼ域ｭ｣蟶ｸ縺ｫ隱ｭ繧√ｋ隨ｬ1QR・峨′縺ゅｋ縺九ｂ縺励ｌ縺ｪ縺・◆繧√√Μ繧ｿ繝ｼ繝ｳ縺帙★縺ｫ蠕悟屓縺励↓縺吶ｋ
+                if (res.isRaw) {
+                    results.push(res);
+                } else {
+                    return res; // 豁｣蟶ｸ縺ｫ隱ｭ繧√◆QR縺後≠繧後・蜊ｳ蠎ｧ縺ｫ霑斐☆
+                }
             }
         }
     }
-    if (options && options.multi) {
-        return results.length > 0 ? results : null; // ★ multiモードなら配列を返す
+    
+    // 豁｣蟶ｸ縺ｫ隱ｭ繧√◆繧ゅ・縺後↑縺上ヽAW・亥､ｱ謨暦ｼ峨□縺代′谿九▲縺溷ｴ蜷医√≠繧九＞縺ｯmulti繝｢繝ｼ繝峨・蝣ｴ蜷・    if (results.length > 0) {
+        if (options && options.multi) {
+            return results;
+        } else {
+            return results[0]; // multi:false縺ｪ繧画怙蛻昴・RAW繧定ｿ斐☆・亥ｾｩ蜿ｷ螟ｱ謨玲凾縺ｮ逕溘ョ繝ｼ繧ｿ蜿門ｾ礼畑・・        }
     }
     return null;
 }
@@ -399,13 +410,15 @@ function jsQR(data, width, height, providedOptions) {
         inversionAttempts: providedOptions.inversionAttempts || defaultOptions.inversionAttempts,
         appEncMask: providedOptions.appEncMask,
         extractRawOnly: providedOptions.extractRawOnly,
-        multi: providedOptions.multi
+        multi: providedOptions.multi,
+        extractRawForFailed: providedOptions.extractRawForFailed,
+        sysEncDecode: providedOptions.sysEncDecode
     };
     var shouldInvert = options.inversionAttempts === "attemptBoth" || options.inversionAttempts === "invertFirst";
     var tryInvertedFirst = options.inversionAttempts === "onlyInvert" || options.inversionAttempts === "invertFirst";
     var _a = binarizer_1.binarize(data, width, height, shouldInvert), binarized = _a.binarized, inverted = _a.inverted;
     var result = scan(tryInvertedFirst ? inverted : binarized, options);
-    // ★ multiモード時の両面スキャン統合ロジック
+    // 笘・multi繝｢繝ｼ繝画凾縺ｮ荳｡髱｢繧ｹ繧ｭ繝｣繝ｳ邨ｱ蜷医Ο繧ｸ繝・け
     if (options.multi) {
         var allResults = result ? result : [];
         if (options.inversionAttempts === "attemptBoth" || options.inversionAttempts === "invertFirst") {
@@ -762,6 +775,14 @@ function readFormatInformation(matrix) {
     }
     return null;
 }
+// 笘・繧ｷ繧ｹ繝・Β證怜捷蛹門ｾｩ蜿ｷ逕ｨ・夐壼ｸｸ縺ｮreadFormatInformation・郁ｪ､繧願先ｧ縺ゅｊ・峨〒蝙句ｼ乗ュ蝣ｱ繧定ｪｭ縺ｿ蜿悶ｊ縲・//   繝槭せ繧ｯ逡ｪ蜿ｷ縺縺代ｒ繝薙ャ繝亥渚霆｢縺励※蜈・・繝槭せ繧ｯ繧貞ｾｩ蜈・☆繧九・//   逕滓・繧ｽ繝輔ヨ縺ｯ蜿崎ｻ｢繝槭せ繧ｯ+豁｣縺励＞BCH縺ｧ譛牙柑縺ｪ蝙句ｼ乗ュ蝣ｱ繧呈嶌縺崎ｾｼ繧薙〒縺・ｋ縺溘ａ縲・//   騾壼ｸｸ縺ｮreadFormatInformation縺ｧ豁｣蟶ｸ縺ｫ隱ｭ縺ｿ蜿悶ｌ繧九ゅ≠縺ｨ縺ｯ繝槭せ繧ｯ逡ｪ蜿ｷ繧貞渚霆｢縺吶ｋ縺縺代・function readFormatInformationSysEnc(matrix) {
+    var formatInfo = readFormatInformation(matrix);
+    if (!formatInfo) return null;
+    return {
+        errorCorrectionLevel: formatInfo.errorCorrectionLevel,
+        dataMask: formatInfo.dataMask ^ 7
+    };
+}
 function getDataBlocks(codewords, version, ecLevel) {
     var ecInfo = version.errorCorrectionLevels[ecLevel];
     var dataBlocks = [];
@@ -798,19 +819,23 @@ function getDataBlocks(codewords, version, ecLevel) {
     }
     return dataBlocks;
 }
-// ★ options 全体を受け取れるように変更
+// 笘・options 蜈ｨ菴薙ｒ蜿励￠蜿悶ｌ繧九ｈ縺・↓螟画峩
 function decodeMatrix(matrix, options) {
     var version = readVersion(matrix);
     if (!version) {
         return null;
     }
-    var formatInfo = readFormatInformation(matrix);
+    var formatInfo;
+    if (options && options.sysEncDecode) {
+        formatInfo = readFormatInformationSysEnc(matrix);
+    } else {
+        formatInfo = readFormatInformation(matrix);
+    }
     if (!formatInfo) {
         return null;
     }
     var codewords = readCodewords(matrix, version, formatInfo);
-    // ★ 追加：寸止めロジック（RAWデータ抽出）
-    // extractRawOnly が true の場合、XORや誤り訂正を行わず、ここでRAWデータを返す
+    // 笘・霑ｽ蜉・壼ｯｸ豁｢繧√Ο繧ｸ繝・け・・AW繝・・繧ｿ謚ｽ蜃ｺ・・    // extractRawOnly 縺・true 縺ｮ蝣ｴ蜷医々OR繧・ｪ､繧願ｨよｭ｣繧定｡後ｏ縺壹√％縺薙〒RAW繝・・繧ｿ繧定ｿ斐☆
     if (options && options.extractRawOnly) {
         return {
             isRaw: true,
@@ -819,10 +844,8 @@ function decodeMatrix(matrix, options) {
             formatInfo: formatInfo
         };
     }
-    // ★ options から appEncMask を取り出す
-    var appEncMask = options ? options.appEncMask : undefined;
-    // ★ 誤り訂正の前に、指定されたマスクでXOR解除を行う！
-    if (appEncMask && appEncMask.length > 0) {
+    // 笘・options 縺九ｉ appEncMask 繧貞叙繧雁・縺・    var appEncMask = options ? options.appEncMask : undefined;
+    // 笘・隱､繧願ｨよｭ｣縺ｮ蜑阪↓縲∵欠螳壹＆繧後◆繝槭せ繧ｯ縺ｧXOR隗｣髯､繧定｡後≧・・    if (appEncMask && appEncMask.length > 0) {
         for (var i = 0; i < codewords.length; i++) {
             codewords[i] ^= appEncMask[i];
         }
@@ -838,6 +861,9 @@ function decodeMatrix(matrix, options) {
         var dataBlock = dataBlocks_3[_i];
         var correctedBytes = reedsolomon_1.decode(dataBlock.codewords, dataBlock.codewords.length - dataBlock.numDataCodewords);
         if (!correctedBytes) {
+            if (options && options.extractRawForFailed) {
+                return { isRaw: true, codewords: codewords, version: version, formatInfo: formatInfo };
+            }
             return null;
         }
         for (var i = 0; i < dataBlock.numDataCodewords; i++) {
@@ -845,13 +871,21 @@ function decodeMatrix(matrix, options) {
         }
     }
     try {
-        return decodeData_1.decode(resultBytes, version.versionNumber);
+        var res = decodeData_1.decode(resultBytes, version.versionNumber);
+        // Expose codewords even on successful decode for signature verification.
+        res.codewords = codewords;
+        res.formatInfo = formatInfo;
+        res.rawMatrixData = { codewords: codewords, version: version, formatInfo: formatInfo };
+        return res;
     }
     catch (_a) {
+        if (options && options.extractRawForFailed) {
+            return { isRaw: true, codewords: codewords, version: version, formatInfo: formatInfo };
+        }
         return null;
     }
 }
-// ★ options 全体を受け取れるように、引数と戻り値（anyを追加）を変更
+// 笘・options 蜈ｨ菴薙ｒ蜿励￠蜿悶ｌ繧九ｈ縺・↓縲∝ｼ墓焚縺ｨ謌ｻ繧雁､・・ny繧定ｿｽ蜉・峨ｒ螟画峩
 function decode(matrix, options) {
     if (matrix == null) {
         return null;
@@ -871,19 +905,19 @@ function decode(matrix, options) {
     return decodeMatrix(matrix, options);
 }
 exports.decode = decode;
-// ★ 新設：保存しておいたRAWデータとマスクから処理を再開する関数
+// 笘・譁ｰ險ｭ・壻ｿ晏ｭ倥＠縺ｦ縺翫＞縺欒AW繝・・繧ｿ縺ｨ繝槭せ繧ｯ縺九ｉ蜃ｦ逅・ｒ蜀埼幕縺吶ｋ髢｢謨ｰ
 function resumeDecode(rawData, appMask) {
     try {
         var codewords = rawData.codewords, version = rawData.version, formatInfo = rawData.formatInfo;
-        // 元の配列を破壊しないようにコピーを作成
+        // 蜈・・驟榊・繧堤ｴ螢翫＠縺ｪ縺・ｈ縺・↓繧ｳ繝斐・繧剃ｽ懈・
         var decryptedCodewords = codewords.slice();
-        // 1. マスク（XOR）による暗号解除
+        // 1. 繝槭せ繧ｯ・・OR・峨↓繧医ｋ證怜捷隗｣髯､
         if (appMask && appMask.length > 0) {
             for (var i = 0; i < decryptedCodewords.length; i++) {
                 decryptedCodewords[i] ^= appMask[i];
             }
         }
-        // 2. ブロック分割＋インタリーブ解除
+        // 2. 繝悶Ο繝・け蛻・牡・九う繝ｳ繧ｿ繝ｪ繝ｼ繝冶ｧ｣髯､
         var dataBlocks = getDataBlocks(decryptedCodewords, version, formatInfo.errorCorrectionLevel);
         if (!dataBlocks) {
             return null;
@@ -891,19 +925,16 @@ function resumeDecode(rawData, appMask) {
         var totalBytes = dataBlocks.reduce(function (a, b) { return a + b.numDataCodewords; }, 0);
         var resultBytes = new Uint8ClampedArray(totalBytes);
         var resultIndex = 0;
-        // 3. 誤り訂正（ここで初めてRSを実行）
-        for (var _i = 0, dataBlocks_4 = dataBlocks; _i < dataBlocks_4.length; _i++) {
+        // 3. 隱､繧願ｨよｭ｣・医％縺薙〒蛻昴ａ縺ｦRS繧貞ｮ溯｡鯉ｼ・        for (var _i = 0, dataBlocks_4 = dataBlocks; _i < dataBlocks_4.length; _i++) {
             var dataBlock = dataBlocks_4[_i];
             var correctedBytes = reedsolomon_1.decode(dataBlock.codewords, dataBlock.codewords.length - dataBlock.numDataCodewords);
             if (!correctedBytes) {
                 return null;
-            } // 復号失敗（パスワード間違いなどでエラー訂正不可）
-            for (var i = 0; i < dataBlock.numDataCodewords; i++) {
+            } // 蠕ｩ蜿ｷ螟ｱ謨暦ｼ医ヱ繧ｹ繝ｯ繝ｼ繝蛾俣驕輔＞縺ｪ縺ｩ縺ｧ繧ｨ繝ｩ繝ｼ險よｭ｣荳榊庄・・            for (var i = 0; i < dataBlock.numDataCodewords; i++) {
                 resultBytes[resultIndex++] = correctedBytes[i];
             }
         }
-        // 4. 文字列へのデコード（Decode payload）
-        return decodeData_1.decode(resultBytes, version.versionNumber);
+        // 4. 譁・ｭ怜・縺ｸ縺ｮ繝・さ繝ｼ繝会ｼ・ecode payload・・        return decodeData_1.decode(resultBytes, version.versionNumber);
     }
     catch (e) {
         return null;
@@ -1058,17 +1089,12 @@ function decode(data, version) {
     while (stream.available() >= 4) {
         var mode = stream.readBits(4);
         if (mode === ModeByte.Terminator) {
-            // ★ ここから書き換え！ ★
-            // 管理部16bit + 終端4bit (合計20bit) が残っているか確認
-            if (stream.available() >= 20) {
-                // 管理部16ビットを読み取って result に保存
-                result.managementCode = stream.readBits(16);
-                // 後ろの終端4ビット(0000)を読み飛ばす
-                stream.readBits(4);
+            // 笘・縺薙％縺九ｉ譖ｸ縺肴鋤縺茨ｼ・笘・            // 邂｡逅・Κ16bit + 邨らｫｯ4bit (蜷郁ｨ・0bit) 縺梧ｮ九▲縺ｦ縺・ｋ縺狗｢ｺ隱・            if (stream.available() >= 20) {
+                // 邂｡逅・Κ16繝薙ャ繝医ｒ隱ｭ縺ｿ蜿悶▲縺ｦ result 縺ｫ菫晏ｭ・                result.managementCode = stream.readBits(16);
+                // 蠕後ｍ縺ｮ邨らｫｯ4繝薙ャ繝・0000)繧定ｪｭ縺ｿ鬟帙・縺・                stream.readBits(4);
             }
             return result;
-            // ★ ここまで書き換え！ ★
-        }
+            // 笘・縺薙％縺ｾ縺ｧ譖ｸ縺肴鋤縺茨ｼ・笘・        }
         else if (mode === ModeByte.ECI) {
             if (stream.readBits(1) === 0) {
                 result.chunks.push({
@@ -10041,10 +10067,9 @@ function locate(matrix) {
     })
         .filter(function (q) { return !!q; })
         .sort(function (a, b) { return a.score - b.score; });
-    // ★ 改良点：QRツインの密集したマーク群から、正しい3つだけを幾何学的に抽出する
-    // ▼▼ src/locator/index.ts の下部を上書き ▼▼
-    // ★ 候補を少し増やして、見落としを防ぐ
-    var topFinderPatterns = validFinderPatterns.slice(0, 20);
+    // 笘・謾ｹ濶ｯ轤ｹ・啣R繝・う繝ｳ縺ｮ蟇・寔縺励◆繝槭・繧ｯ鄒､縺九ｉ縲∵ｭ｣縺励＞3縺､縺縺代ｒ蟷ｾ菴募ｭｦ逧・↓謚ｽ蜃ｺ縺吶ｋ
+    // 笆ｼ笆ｼ src/locator/index.ts 縺ｮ荳矩Κ繧剃ｸ頑嶌縺・笆ｼ笆ｼ
+    // 笘・蛟呵｣懊ｒ蟆代＠蠅励ｄ縺励※縲∬ｦ玖誠縺ｨ縺励ｒ髦ｲ縺・    var topFinderPatterns = validFinderPatterns.slice(0, 20);
     var finderPatternGroups = [];
     var len = topFinderPatterns.length;
     for (var i = 0; i < len - 2; i++) {
@@ -10053,28 +10078,24 @@ function locate(matrix) {
                 var p1 = topFinderPatterns[i];
                 var p2 = topFinderPatterns[j];
                 var p3 = topFinderPatterns[k];
-                // ① サイズのチェック（ピンボケを考慮して許容範囲を 0.5 -> 1.0 に緩和）
-                var sizeAvg = (p1.size + p2.size + p3.size) / 3;
+                // 竭 繧ｵ繧､繧ｺ縺ｮ繝√ぉ繝・け・医ヴ繝ｳ繝懊こ繧定・・縺励※險ｱ螳ｹ遽・峇繧・0.5 -> 1.0 縺ｫ邱ｩ蜥鯉ｼ・                var sizeAvg = (p1.size + p2.size + p3.size) / 3;
                 var sizeErr = (Math.abs(p1.size - sizeAvg) + Math.abs(p2.size - sizeAvg) + Math.abs(p3.size - sizeAvg)) / sizeAvg;
                 if (sizeErr > 1.0)
                     continue;
-                // ② 配置のチェック
+                // 竭｡ 驟咲ｽｮ縺ｮ繝√ぉ繝・け
                 var _a = reorderFinderPatterns(p1, p2, p3), topRight = _a.topRight, topLeft = _a.topLeft, bottomLeft = _a.bottomLeft;
                 var topSide = distance(topLeft, topRight);
                 var leftSide = distance(topLeft, bottomLeft);
                 var diag = distance(topRight, bottomLeft);
                 if (topSide === 0 || leftSide === 0)
                     continue;
-                // ★ 縦と横の長さの比率（スマホを斜めに構えた時の歪みを考慮し、0.4 〜 2.5 と大幅に緩和）
-                var ratio = topSide / leftSide;
+                // 笘・邵ｦ縺ｨ讓ｪ縺ｮ髟ｷ縺輔・豈皮紫・医せ繝槭・繧呈万繧√↓讒九∴縺滓凾縺ｮ豁ｪ縺ｿ繧定・・縺励・.4 縲・2.5 縺ｨ螟ｧ蟷・↓邱ｩ蜥鯉ｼ・                var ratio = topSide / leftSide;
                 if (ratio < 0.4 || ratio > 2.5)
                     continue;
-                // ★ 直角かどうか（これも斜め撮影を考慮して 0.4 〜 2.5 に緩和）
-                var angleRatio = (diag * diag) / (topSide * topSide + leftSide * leftSide);
+                // 笘・逶ｴ隗偵°縺ｩ縺・°・医％繧後ｂ譁懊ａ謦ｮ蠖ｱ繧定・・縺励※ 0.4 縲・2.5 縺ｫ邱ｩ蜥鯉ｼ・                var angleRatio = (diag * diag) / (topSide * topSide + leftSide * leftSide);
                 if (angleRatio < 0.4 || angleRatio > 2.5)
                     continue;
-                // 幾何学的な「歪み」のペナルティを軽くし、多少歪んでいてもデコード処理へ回す（50 -> 10）
-                var geoErr = Math.abs(1 - ratio) + Math.abs(1 - angleRatio);
+                // 蟷ｾ菴募ｭｦ逧・↑縲梧ｭｪ縺ｿ縲阪・繝壹リ繝ｫ繝・ぅ繧定ｻｽ縺上＠縲∝､壼ｰ第ｭｪ繧薙〒縺・※繧ゅョ繧ｳ繝ｼ繝牙・逅・∈蝗槭☆・・0 -> 10・・                var geoErr = Math.abs(1 - ratio) + Math.abs(1 - angleRatio);
                 var totalScore = p1.score + p2.score + p3.score + geoErr * 10;
                 finderPatternGroups.push({ points: [p1, p2, p3], score: totalScore });
             }
@@ -10085,8 +10106,7 @@ function locate(matrix) {
         return null;
     }
     var result = [];
-    // ★ 歪んだQRも拾えるように、処理に回すグループ数を増やす（6 -> 10）
-    var groupsToProcess = finderPatternGroups.slice(0, 10);
+    // 笘・豁ｪ繧薙□QR繧よ鏡縺医ｋ繧医≧縺ｫ縲∝・逅・↓蝗槭☆繧ｰ繝ｫ繝ｼ繝玲焚繧貞｢励ｄ縺呻ｼ・ -> 10・・    var groupsToProcess = finderPatternGroups.slice(0, 10);
     for (var _i = 0, groupsToProcess_1 = groupsToProcess; _i < groupsToProcess_1.length; _i++) {
         var group = groupsToProcess_1[_i];
         var _b = reorderFinderPatterns(group.points[0], group.points[1], group.points[2]), topRight = _b.topRight, topLeft = _b.topLeft, bottomLeft = _b.bottomLeft;
@@ -10120,7 +10140,7 @@ function locate(matrix) {
     return result;
 }
 exports.locate = locate;
-// ※これより下の findAlignmentPattern 関数はそのまま残してください
+// 窶ｻ縺薙ｌ繧医ｊ荳九・ findAlignmentPattern 髢｢謨ｰ縺ｯ縺昴・縺ｾ縺ｾ谿九＠縺ｦ縺上□縺輔＞
 function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, bottomLeft) {
     var _a;
     var dimension;
@@ -10142,8 +10162,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         if (!matrix.get(Math.floor(x), Math.floor(y))) {
             return;
         }
+        var d = distance({ x: x, y: y }, expectedAlignmentPattern);
+        // 笘・繝・う繝ｳQR蟇ｾ遲厄ｼ壻ｺ域Φ菴咲ｽｮ縺九ｉ縺ｮ霍晞屬縺後＃縺上ｏ縺壹°(1繝｢繧ｸ繝･繝ｼ繝ｫ莉･蜀・縺ｮ蝣ｴ蜷医・縺ｿ謗｡逕ｨ縲・        // 繝・う繝ｳ縺ｧ縺ｯ蛻･QR縺ｮ繝弱う繧ｺ縺碁撼蟶ｸ縺ｫ螟壹＞縺溘ａ縲∝ｰ代＠縺ｧ繧る屬繧後◆繧ゅ・繧呈治逕ｨ縺吶ｋ縺ｨ豺ｱ蛻ｻ縺ｪ豁ｪ縺ｿ縺檎匱逕溘☆繧九・        if (d > moduleSize * 1.2) {
+            return;
+        }
         var sizeScore = scorePattern({ x: Math.floor(x), y: Math.floor(y) }, [1, 1, 1], matrix);
-        var score = sizeScore + distance({ x: x, y: y }, expectedAlignmentPattern);
+        // 闖ｱ蠖｢繝代ち繝ｼ繝ｳ縺ｮ蝣ｴ蜷医・ sizeScore 縺・Infinity 縺ｾ縺溘・髱槫ｸｸ縺ｫ謔ｪ縺上↑繧九◆繧√∬ｷ晞屬 d 繧呈怙蜆ｪ蜈医〒隧穂ｾ｡縺吶ｋ縲・        var score = (d * 100) + (sizeScore === Infinity ? 50 : sizeScore);
         return { x: x, y: y, score: score };
     })
         .filter(function (v) { return !!v; })

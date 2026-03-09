@@ -1,300 +1,938 @@
-﻿<!DOCTYPE html>
+﻿
+
+
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>QRツイン リーダー</title>
-<meta name="theme-color" content="#121212">
-<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
-<link rel="manifest" href="manifest.json">
-<script src="./jsQR.js"></script>
-<style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#121212;color:#fff;text-align:center}
-h2{margin:14px 0;font-size:1.2rem}.camera{position:relative;max-width:640px;margin:0 auto;background:#000;display:none}
-video{width:100%;display:block;object-fit:cover}canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.panel{max-width:640px;margin:0 auto;padding:14px;background:#1e1e1e;border-top:1px solid #333;text-align:left;display:none}
-.box{margin-bottom:10px;padding:10px;border-radius:8px;background:#2c2c2c;word-break:break-all}.q1{border-left:5px solid #00E676}.q2{border-left:5px solid #29B6F6}
-button{width:100%;max-width:320px;padding:14px;font-size:1.05rem;font-weight:700;border:0;border-radius:8px;cursor:pointer;margin-top:10px;background:#6200EE;color:#fff}
-button:disabled{background:#555;color:#aaa;cursor:not-allowed}#startBtn{background:#81C784;color:#111}#backBtn{background:#03DAC6;color:#000;margin-top:30px}
-.small{font-size:.82rem;color:#9ecfff;margin:6px 0 0}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;justify-content:center;align-items:center}
-.modalCard{background:#1e1e1e;padding:20px;border-radius:8px;width:80%;max-width:400px;border:1px solid #333}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QR Twin Reader (蜈ｨ證怜捷蛹門ｯｾ蠢・</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="QR繝・う繝ｳ">
+    <meta name="theme-color" content="#121212">
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, sans-serif; background-color: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; height: 100dvh; overflow: hidden; }
+        
+        .header { width: 100%; padding: 15px; background-color: #1e1e1e; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 10; box-sizing: border-box; }
+        
+        .camera-container { position: relative; width: 100%; flex: 1; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        #camera { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
+        #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 2; }
+        #zxingCanvas { display: none; }
+        
+        #cameraControls { position: absolute; bottom: 30px; left: 0; width: 100%; z-index: 50; display: none; justify-content: center; gap: 15px; pointer-events: none; }
+        #cameraControls .btn { pointer-events: auto; padding: 10px 16px; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+
+        
+        .result-panel { width: 100%; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 20px)) 20px; background-color: #1e1e1e; box-sizing: border-box; text-align: center; z-index: 10; box-shadow: 0 -2px 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; }
+        
+        .status { font-size: 0.9rem; color: #ff9800; }
+        
+        .btn { background-color: #2196F3; color: white; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; display: inline-block; margin-top: 5px; }
+        .btn:active { background-color: #1976D2; }
+        .btn.secondary { background-color: #424242; }
+        .btn.secondary:active { background-color: #212121; }
+        .btn.sys-enc { background-color: #FF6F00; }
+        .btn.sys-enc:active { background-color: #E65100; }
+        .btn.double-enc { background-color: #7B1FA2; }
+        .btn.double-enc:active { background-color: #4A148C; }
+        
+        .mode-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .mode-btns .btn { width: 80%; max-width: 300px; }
+        
+        /* 逕ｻ髱｢繧ｪ繝ｼ繝舌・繝ｬ繧､ (繝代せ繝ｯ繝ｼ繝峨・邨先棡逕ｻ髱｢) */
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; text-align: center; }
+        
+        .overlay-box { background: #1e1e1e; padding: 25px; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
+        .overlay-box h2 { margin: 0; color: #4CAF50; font-size: 1.3rem; }
+        .overlay-box p { margin: 0; font-size: 1rem; color: #ccc; word-break: break-all; }
+        .overlay-box input { padding: 12px; font-size: 1.1rem; border-radius: 6px; border: 1px solid #444; background: #000; color: #fff; text-align: center; }
+        input:focus { outline: none; border-color: #2196F3; }
+        
+        .qr-data-card { background: #000; border: 1px solid #333; border-radius: 6px; padding: 10px; text-align: left; }
+        .qr-data-card label { display: block; font-size: 0.8rem; color: #888; margin-bottom: 4px; }
+        .qr-data-card .text { font-size: 1.1rem; color: #fff; word-break: break-all; font-family: monospace; }
+        .qr-data-card .mgmt { font-size: 0.8rem; color: #4CAF50; font-family: monospace; margin-top: 4px; }
+        
+        .enc-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; }
+        .enc-badge.sys { background: rgba(255,111,0,0.2); color: #FF6F00; border: 1px solid rgba(255,111,0,0.4); }
+        .enc-badge.app { background: rgba(123,31,162,0.2); color: #CE93D8; border: 1px solid rgba(123,31,162,0.4); }
+    </style>
 </head>
 <body>
-<div id="passwordScreen" class="modal">
-  <div class="modalCard">
-    <h3 style="color:#03DAC6;margin-top:0">パスワード入力</h3>
-    <p style="font-size:.9rem;color:#aaa">暗号化された第2QRを検出しました。復号パスワードを入力してください。</p>
-    <input id="appPasswordInput" type="password" placeholder="パスワード" style="width:100%;padding:12px;margin-bottom:14px;border-radius:4px;border:1px solid #555;background:#2c2c2c;color:#fff;box-sizing:border-box;font-size:1rem">
-    <button onclick="submitPassword()" style="background:#00E676;color:#000">復号する</button>
-    <button onclick="cancelPassword()" style="background:#555">キャンセル</button>
-  </div>
-</div>
 
-<h2>QRツイン リーダー</h2>
-<div id="startScreen" style="padding:20px;margin-top:50px">
-  <p style="color:#aaa;font-size:.92rem">QRツイン、または離れた2つのQRコードを読み取ります。</p>
-  <button id="startBtn" onclick="startApp()">カメラを起動する</button>
-</div>
+    <div class="header" id="headerText">QR Twin Reader (蜈ｨ證怜捷蛹門ｯｾ蠢・</div>
+    
+    <div class="camera-container">
+        <video id="camera" playsinline autoplay muted></video>
+        <canvas id="overlayCanvas"></canvas>
+        <div id="cameraControls">
+            <button class="btn secondary" onclick="goBack()">売 繝｢繝ｼ繝牙・譖ｿ</button>
+            <button class="btn" onclick="restartScan()">胴 繧ゅ≧荳蠎ｦ繧ｹ繧ｭ繝｣繝ｳ</button>
+        </div>
+    </div>
+    <canvas id="zxingCanvas"></canvas>
 
-<div id="cameraContainer" class="camera">
-  <video id="video" playsinline autoplay muted></video>
-  <canvas id="overlayCanvas"></canvas>
-</div>
+    <div class="result-panel">
+        <div class="status" id="statusText">繝｢繝ｼ繝峨ｒ驕ｸ謚槭＠縺ｦ縺上□縺輔＞</div>
+        <div id="btnContainer">
+            <div class="mode-btns">
+                <button class="btn" id="normalModeBtn">騾壼ｸｸ繝｢繝ｼ繝・/button>
+                <button class="btn double-enc" id="doubleEncModeBtn">莠碁㍾證怜捷蛹悶Δ繝ｼ繝・/button>
+            </div>
+        </div>
+    </div>
 
-<div id="statusPanel" class="panel">
-  <div id="detectorInfo" style="font-size:.8rem;color:#03DAC6;font-weight:700;margin-bottom:10px">エンジン: 初期化中</div>
-  <div id="archInfo" class="small">search: 探索中</div>
-  <div class="box q1"><strong>第1QR:</strong> <span id="text1">未検出</span><br><span style="font-size:.85em;color:#ccc">管理16bit: <span id="mg1">--</span></span></div>
-  <div class="box q2"><strong>第2QR:</strong> <span id="text2">未検出</span><br><span style="font-size:.85em;color:#ccc">管理16bit: <span id="mg2">--</span></span></div>
-</div>
+    <!-- 繝代せ繝ｯ繝ｼ繝牙・蜉帷判髱｢・医い繝励Μ證怜捷蛹也畑・・-->
+    <div class="overlay-screen" id="passwordScreen">
+        <div class="overlay-box">
+            <h2>QR繧ｳ繝ｼ繝峨・證怜捷蛹悶＆繧後※縺・∪縺・/h2>
+            <div class="qr-data-card">
+                <label>隨ｬ1QR縺ｮ繝・・繧ｿ</label>
+                <div class="text" id="qr1PreviewText">-</div>
+            </div>
+            <p>繝代せ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ繧ｹ繧ｭ繝｣繝ｳ蜀埼幕</p>
+            <input type="password" id="appPasswordInput" placeholder="Password" />
+            <button class="btn" onclick="submitPassword()">繧ｹ繧ｭ繝｣繝ｳ蜀埼幕</button>
+            <button class="btn secondary" onclick="cancelPassword()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        </div>
+    </div>
 
-<div id="resultScreen" style="display:none;padding:20px;margin-top:50px">
-  <h3 style="color:#00E676;margin-bottom:20px">読み取り完了</h3>
-  <div class="box q1" style="text-align:left"><strong>第1QR:</strong><br><span id="finalText1"></span><br><span style="font-size:.9em;color:#ffeb3b">管理16bit: <span id="finalMg1">--</span></span></div>
-  <div class="box q2" style="text-align:left"><strong>第2QR:</strong><br><span id="finalText2"></span><br><span style="font-size:.9em;color:#ffeb3b">管理16bit: <span id="finalMg2">--</span></span></div>
-  <button id="backBtn" onclick="goBack()">カメラ画面に戻る</button>
-</div>
+    <!-- 繧ｷ繧ｹ繝・Β證怜捷蛹夜夂衍逕ｻ髱｢ -->
+    <div class="overlay-screen" id="sysEncScreen">
+        <div class="overlay-box">
+            <span class="enc-badge sys">白 繧ｷ繧ｹ繝・Β證怜捷蛹・/span>
+            <h2 id="sysEncTitle">QR繧ｳ繝ｼ繝峨′繧ｷ繧ｹ繝・Β證怜捷蛹悶＆繧後※縺・∪縺・/h2>
+            <div class="qr-data-card">
+                <label>隨ｬ1QR縺ｮ繝・・繧ｿ</label>
+                <div class="text" id="sysEncQr1Text">-</div>
+            </div>
+            <p id="sysEncMsg">繧ｹ繧ｭ繝｣繝ｳ蜀埼幕縺ｧ隨ｬ2QR繧貞ｾｩ蜿ｷ縺励∪縺・/p>
+            <button class="btn sys-enc" id="sysEncResumeBtn" onclick="resumeAfterSysEnc()">繧ｹ繧ｭ繝｣繝ｳ蜀埼幕</button>
+            <button class="btn secondary" onclick="cancelSysEnc()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        </div>
+    </div>
 
-<script>
-"use strict";
-const video=document.getElementById('video');
-const overlayCanvas=document.getElementById('overlayCanvas');
-const ctx=overlayCanvas.getContext('2d');
-const fullCanvas=document.createElement('canvas');
-const fullCtx=fullCanvas.getContext('2d',{willReadFrequently:true});
-const searchCanvas=document.createElement('canvas');
-const searchCtx=searchCanvas.getContext('2d',{willReadFrequently:true});
-const roiCanvas=document.createElement('canvas');
-const roiCtx=roiCanvas.getContext('2d',{willReadFrequently:true});
+    <!-- 莠碁㍾證怜捷蛹・ 隨ｬ1QR隱ｭ蜿悶ｊ蠕檎判髱｢ -->
+    <div class="overlay-screen" id="doubleEncScreen">
+        <div class="overlay-box">
+            <span class="enc-badge app">柏 繧｢繝励Μ證怜捷蛹・/span>
+            <h2>QR繧ｳ繝ｼ繝峨′繧｢繝励Μ證怜捷蛹悶＆繧後※縺・∪縺・/h2>
+            <div class="qr-data-card">
+                <label>隨ｬ1QR縺ｮ繝・・繧ｿ</label>
+                <div class="text" id="doubleEncQr1Text">-</div>
+            </div>
+            <p>隨ｬ2QR繧貞ｾｩ蜿ｷ縺吶ｋ縺溘ａ縺ｮ繝代せ繝ｯ繝ｼ繝峨ｒ蜈･蜉・/p>
+            <input type="password" id="doubleEncPasswordInput" placeholder="Password" />
+            <button class="btn double-enc" onclick="resumeAfterDoubleEnc()">繧ｹ繧ｭ繝｣繝ｳ蜀埼幕</button>
+            <button class="btn secondary" onclick="cancelDoubleEnc()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        </div>
+    </div>
 
-const state={stream:null,running:false,starting:false,rafId:0,mode:'search',detector:null,lastProcessAt:0,searchInterval:130,trackInterval:65,searchScale:1280,qr1:null,qr2:null,lastSearchCandidates:[],appPassword:null,appMask:null,lostCount:0,maxLost:6,searchMiss:0};
+    <!-- 譛邨らｵ先棡逕ｻ髱｢ -->
+    <div class="overlay-screen" id="resultScreen">
+        <div class="overlay-box" style="gap: 20px;">
+            <h2>隱ｭ蜿門ｮ御ｺ・/h2>
+            <div class="qr-data-card" style="border-color: #00E676;">
+                <label style="color:#00E676;" id="resLabel1">隨ｬ1QR</label>
+                <div class="text" id="resText1">-</div>
+                
+            </div>
+            <div class="qr-data-card" style="border-color: #29B6F6;">
+                <label style="color:#29B6F6;" id="resLabel2">隨ｬ2QR</label>
+                <div class="text" id="resText2">-</div>
+                
+            </div>
+            <p id="authComment" style="margin:0; color:#9CCC65; font-size:0.95rem;"></p>
+            <button class="btn" onclick="restartScan()">繧ゅ≧荳蠎ｦ繧ｹ繧ｭ繝｣繝ｳ</button>
+        </div>
+    </div>
 
-const arr=v=>!v?[]:Array.isArray(v)?v:[v];
-const txt=(id,v)=>document.getElementById(id).textContent=v;
-const cpy=p=>p?{x:p.x,y:p.y}:null;
-const center=ps=>{if(!ps?.length)return{x:0,y:0};let x=0,y=0;for(const p of ps){x+=p.x;y+=p.y;}return{x:x/ps.length,y:y/ps.length};};
-const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+    <script src="jsQR.js"></script>
 
-function mgCodeToBits(code){if(typeof code!=='number'||!Number.isFinite(code))return null;return (code>>>0).toString(2).padStart(16,'0').slice(-16);}
-function parseManagement(bitsOrCode){const bits=typeof bitsOrCode==='string'?bitsOrCode:mgCodeToBits(bitsOrCode);if(!bits||bits.length!==16)return{bits:null,qrNo:null,sameData:false,systemEncrypted:false,appEncrypted:false,dataType:null};return{bits,qrNo:bits[0]==='1'?2:1,sameData:bits[5]==='1',systemEncrypted:bits[6]==='1',appEncrypted:bits[7]==='1',dataType:parseInt(bits.slice(8,11),2)};}
-function isVersionObject(v){return!!(v&&typeof v==='object'&&typeof v.versionNumber==='number');}
-function isFormatInfoObject(v){return!!(v&&typeof v==='object'&&typeof v.dataMask==='number'&&typeof v.errorCorrectionLevel!=='undefined');}
-function resolveVersion(c){if(isVersionObject(c?.rawData?.version))return c.rawData.version;if(isVersionObject(c?.version))return c.version;return null;}
-function resolveFormatInfo(c){if(isFormatInfoObject(c?.rawData?.formatInfo))return c.rawData.formatInfo;if(isFormatInfoObject(c?.formatInfo))return c.formatInfo;return null;}
-function getRawMeta(c){if(!c)return null;const version=resolveVersion(c),formatInfo=resolveFormatInfo(c);if(!version||!formatInfo)return null;const raw=c?.rawBytes?.length?Array.from(c.rawBytes):(Array.isArray(c?.rawData?.codewords)?c.rawData.codewords.slice():null);if(!raw?.length)return null;return{codewords:raw,version,formatInfo};}
-function hasRawMeta(c){return!!((c?.rawBytes?.length||Array.isArray(c?.rawData?.codewords))&&resolveVersion(c)&&resolveFormatInfo(c));}
-function locPoints(loc){if(!loc)return[];if(loc.corners?.length>=4)return loc.corners.map(cpy);const tl=loc.topLeftCorner||loc.topLeft,tr=loc.topRightCorner||loc.topRight,br=loc.bottomRightCorner||loc.bottomRight,bl=loc.bottomLeftCorner||loc.bottomLeft;return[tl,tr,br,bl].filter(Boolean).map(cpy);}
-function mapPoints(ps,sx,sy,ox=0,oy=0){return(ps||[]).map(p=>({x:p.x*sx+ox,y:p.y*sy+oy}));}
-function bounds(ps,pad=0){if(!ps?.length)return null;const xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);const minX=Math.min(...xs)-pad,maxX=Math.max(...xs)+pad,minY=Math.min(...ys)-pad,maxY=Math.max(...ys)+pad;return{x:minX,y:minY,w:maxX-minX,h:maxY-minY};}
-function clampBounds(b,maxW,maxH){const x=clamp(Math.round(b.x),0,Math.max(0,maxW-1)),y=clamp(Math.round(b.y),0,Math.max(0,maxH-1));const w=clamp(Math.round(b.w),1,Math.max(1,maxW-x)),h=clamp(Math.round(b.h),1,Math.max(1,maxH-y));return{x,y,w,h};}
-function expandBounds(b,m,maxW,maxH){if(!b)return null;return clampBounds({x:b.x-m,y:b.y-m,w:b.w+m*2,h:b.h+m*2},maxW,maxH);}
-function rectIoU(a,b){if(!a||!b)return 0;const ax2=a.x+a.w,ay2=a.y+a.h,bx2=b.x+b.w,by2=b.y+b.h,ix1=Math.max(a.x,b.x),iy1=Math.max(a.y,b.y),ix2=Math.min(ax2,bx2),iy2=Math.min(ay2,by2),iw=Math.max(0,ix2-ix1),ih=Math.max(0,iy2-iy1),inter=iw*ih;if(!inter)return 0;const union=a.w*a.h+b.w*b.h-inter;return union>0?inter/union:0;}
-function sameCandidate(a,b){if(!a?.center||!b?.center||!a?.bounds||!b?.bounds)return false;if(a.management?.qrNo&&b.management?.qrNo&&a.management.qrNo!==b.management.qrNo)return false;const iou=rectIoU(a.bounds,b.bounds),minSide=Math.max(1,Math.min(a.bounds.w,a.bounds.h,b.bounds.w,b.bounds.h)),d=dist(a.center,b.center),dn=d/minSide,areaA=Math.max(1,a.bounds.w*a.bounds.h),areaB=Math.max(1,b.bounds.w*b.bounds.h),ratio=areaA>areaB?areaA/areaB:areaB/areaA;if(iou>=0.74)return true;if(iou>=0.58&&dn<=0.1&&ratio<2.2)return true;return dn<=0.07&&ratio<2.2;}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 
-function normalizeCandidate(detail,ox=0,oy=0,sx=1,sy=1){if(!detail)return null;const pts=mapPoints(detail.corners||locPoints(detail.location),sx,sy,ox,oy);if(pts.length<4)return null;const raw=detail.rawBytes||detail.rawCodewords||null,verObj=isVersionObject(detail.rawData?.version)?detail.rawData.version:(isVersionObject(detail.version)?detail.version:null),fmtObj=isFormatInfoObject(detail.rawData?.formatInfo)?detail.rawData.formatInfo:(isFormatInfoObject(detail.formatInfo)?detail.formatInfo:null),vNo=typeof detail.version==='number'?detail.version:(verObj?.versionNumber??null),rawData=(detail.rawData&&Array.isArray(detail.rawData.codewords)&&isVersionObject(detail.rawData.version)&&isFormatInfoObject(detail.rawData.formatInfo))?detail.rawData:(raw&&verObj&&fmtObj?{codewords:Array.from(raw),version:verObj,formatInfo:fmtObj}:null),mgBits=detail.managementBits||detail.bitStream?.managementBits||mgCodeToBits(detail.managementCode);return{text:detail.data||detail.text||null,managementCode:detail.managementCode??null,management:parseManagement(mgBits),points:pts,center:center(pts),bounds:bounds(pts,0),version:verObj,versionNumber:vNo,formatInfo:fmtObj,rawBytes:raw?Uint8Array.from(raw):null,rawData,decodeStage:detail.decodeStage||null,score:detail.score||0,isDecrypted:!!detail.isDecrypted};}
+    <script>
+        const video = document.getElementById('camera');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = overlayCanvas.getContext('2d', { willReadFrequently: true });
+        
+        const zxingCanvas = document.getElementById('zxingCanvas');
+        const zxingCtx = zxingCanvas.getContext('2d', { willReadFrequently: true });
 
-function cScore(c){if(!c)return-Infinity;let s=0;if(c.text)s+=1200;if(c.management?.bits)s+=300;if(c.rawBytes)s+=500;if(hasRawMeta(c))s+=80;if(c.points?.length>=4)s+=120;s+=Math.min(180,Math.round(Math.sqrt(Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)))));return s+(c.score||0);}
-function mergeInfo(a,b){if(!a)return b;if(!b)return a;const p=(b.points?.length||0)>=(a.points?.length||0)?b.points:a.points,bmg=!!b.management?.bits,amg=!!a.management?.bits,rawData=(b.rawData&&Array.isArray(b.rawData.codewords)&&isVersionObject(b.rawData.version)&&isFormatInfoObject(b.rawData.formatInfo))?b.rawData:((a.rawData&&Array.isArray(a.rawData.codewords)&&isVersionObject(a.rawData.version)&&isFormatInfoObject(a.rawData.formatInfo))?a.rawData:null),version=isVersionObject(b.version)?b.version:(isVersionObject(b.rawData?.version)?b.rawData.version:(isVersionObject(a.version)?a.version:(isVersionObject(a.rawData?.version)?a.rawData.version:null))),formatInfo=isFormatInfoObject(b.formatInfo)?b.formatInfo:(isFormatInfoObject(b.rawData?.formatInfo)?b.rawData.formatInfo:(isFormatInfoObject(a.formatInfo)?a.formatInfo:(isFormatInfoObject(a.rawData?.formatInfo)?a.rawData.formatInfo:null))),versionNumber=typeof b.versionNumber==='number'?b.versionNumber:(typeof b.version==='number'?b.version:(typeof a.versionNumber==='number'?a.versionNumber:(typeof a.version==='number'?a.version:(version?.versionNumber??null))));return{...a,...b,text:bmg?(b.text||a.text||null):(a.text||b.text||null),managementCode:bmg?(b.managementCode??a.managementCode??null):(a.managementCode??b.managementCode??null),management:bmg?b.management:(amg?a.management:(b.management||a.management)),rawBytes:b.rawBytes||a.rawBytes||null,rawData,version,versionNumber,formatInfo,points:p,center:center(p||[]),bounds:bounds(p||[],0),decodeStage:b.decodeStage||a.decodeStage||null,score:Math.max(a.score||0,b.score||0),isDecrypted:!!(a.isDecrypted||b.isDecrypted)};}
-function mergeCandidates(a,b){const out=a.slice();for(const c of b){const i=out.findIndex(v=>sameCandidate(v,c));if(i<0)out.push(c);else out[i]=mergeInfo(out[i],c);}return out.sort((x,y)=>cScore(y)-cScore(x));}
+        const statusText = document.getElementById('statusText');
 
-function decodeFast(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{return arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true})).map(d=>normalizeCandidate(d,ox,oy,sx,sy)).filter(Boolean).sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeFast',e);return[];}}
-function decodeRaw(img,ox=0,oy=0,sx=1,sy=1){if(!img?.data||typeof jsQR!=='function')return[];try{const out=[];for(const cand of arr(jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert',multi:true,extractRawOnly:true}))){const raw=cand?.codewords?Array.from(cand.codewords):null,rawData=raw&&isVersionObject(cand?.version)&&isFormatInfoObject(cand?.formatInfo)?{codewords:raw,version:cand.version,formatInfo:cand.formatInfo}:null,resumed=rawData&&typeof jsQR.resumeDecode==='function'?jsQR.resumeDecode(rawData,null):null,n=normalizeCandidate({location:cand?.location||null,corners:cand?.corners||null,data:resumed?.text||resumed?.data||null,text:resumed?.text||resumed?.data||null,managementCode:resumed?.managementCode??null,rawCodewords:raw,rawData,version:cand?.version||null,formatInfo:cand?.formatInfo||null,decodeStage:resumed?'raw+resume':'raw',score:resumed?20:0},ox,oy,sx,sy);if(n)out.push(n);}return out.sort((a,b)=>cScore(b)-cScore(a));}catch(e){console.warn('decodeRaw',e);return[];}}
+        let isScanning = false;
+        // scanStage: 0=Idle, 1=Scan QR1, 2=Password/SysEnc wait, 3=Scan QR2
+        let scanStage = 0;
+        let firstQR = null;
+        let secondQR = null;
+        let appMask = null;
+        let lastDetectTime = 0;
+        let isProcessing = false;
+        let sysEncStage3 = false; // 騾壼ｸｸ繝｢繝ｼ繝峨〒繧ｷ繧ｹ繝・Β證怜捷蛹悶・隨ｬ2QR謗｢邏｢荳ｭ繝輔Λ繧ｰ
+        let lastTwinBBox = null; // 笘・Stage 1縺ｧ讀懷・縺励◆繝・う繝ｳQR縺ｮ鬆伜沺繧剃ｿ晏ｭ・
 
-function chooseBestPair(cands){const v=cands.filter(c=>c?.points?.length>=4);if(!v.length)return{first:null,second:null};const ord=v.slice().sort((a,b)=>cScore(b)-cScore(a)),q1=ord.filter(c=>c.management?.qrNo===1),q2=ord.filter(c=>c.management?.qrNo===2),first=q1[0]||ord[0];if(!first)return{first:null,second:null};const q2Best=q2.find(c=>c!==first&&!sameCandidate(c,first));if(q2Best)return{first,second:q2Best};const base=Math.max(1,Math.min(first.bounds?.w||1,first.bounds?.h||1)),otherScore=c=>{const d=dist(first.center,c.center),dn=d/base,a1=Math.max(1,(first.bounds?.w||1)*(first.bounds?.h||1)),a2=Math.max(1,(c.bounds?.w||1)*(c.bounds?.h||1)),ratio=a1>a2?a1/a2:a2/a1;let s=cScore(c);if(c.management?.qrNo===2)s+=700;if(c.management?.qrNo===1)s-=260;if(dn<0.08)s-=900;else if(dn>=0.15&&dn<=0.95)s+=150;else if(dn>2.8)s-=160;if(ratio>9)s-=220;return s;},others=ord.filter(c=>c!==first&&!sameCandidate(c,first)).sort((a,b)=>otherScore(b)-otherScore(a));return{first,second:others[0]||null};}
-function pickEncryptedSecond(cands,qr1,nearRef=null){const f=cands.filter(c=>hasRawMeta(c)&&!sameCandidate(c,qr1));if(!f.length)return null;const base=Math.max(1,Math.min(qr1?.bounds?.w||1,qr1?.bounds?.h||1));f.sort((a,b)=>{const score=c=>{const d1=qr1?.center&&c.center?dist(qr1.center,c.center):0,dn=d1/base,dr=nearRef?.center&&c.center?dist(nearRef.center,c.center):0;let s=cScore(c);if(c.management?.qrNo===2)s+=500;if(c.management?.qrNo===1)s-=280;if(dn<0.08)s-=1200;else if(dn>=0.12&&dn<=1.1)s+=220;else if(dn>3.2)s-=220;if(nearRef?.center)s+=Math.max(0,220-dr*2.2);return s;};return score(b)-score(a);});return{...f[0],text:null,isDecrypted:false};}
-function withRoi(q,m=20){if(!q?.bounds)return q;return{...q,roi:expandBounds(q.bounds,m,fullCanvas.width,fullCanvas.height)};}
-function cropRoi(b){if(!b)return null;const c=clampBounds(b,fullCanvas.width,fullCanvas.height);roiCanvas.width=c.w;roiCanvas.height=c.h;roiCtx.clearRect(0,0,c.w,c.h);roiCtx.drawImage(fullCanvas,c.x,c.y,c.w,c.h,0,0,c.w,c.h);return{bounds:c,imageData:roiCtx.getImageData(0,0,c.w,c.h)};}
-function drawPoly(ps,col,label){if(!ps||ps.length<4)return;ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);for(let i=1;i<ps.length;i++)ctx.lineTo(ps[i].x,ps[i].y);ctx.closePath();ctx.stroke();ctx.fillStyle=col;ctx.font='bold 18px sans-serif';ctx.fillText(label,ps[0].x+6,ps[0].y-8);ctx.restore();}
-function drawRoi(b,col,label){if(!b)return;ctx.save();ctx.strokeStyle=col;ctx.setLineDash([8,6]);ctx.lineWidth=2;ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.setLineDash([]);ctx.fillStyle=col;ctx.font='14px sans-serif';ctx.fillText(label,b.x+6,b.y+18);ctx.restore();}
-function overlay(){ctx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);if(state.qr1?.points)drawPoly(state.qr1.points,'#00E676','QR1');if(state.qr2?.points)drawPoly(state.qr2.points,'#29B6F6','QR2');if(state.qr1?.roi)drawRoi(state.qr1.roi,'rgba(0,230,118,.85)','ROI1');if(state.qr2?.roi)drawRoi(state.qr2.roi,'rgba(41,182,246,.85)','ROI2');}
+        const SCAN_INTERVAL_MS = 50;
 
-function fitVideo(){const w=video.videoWidth||0,h=video.videoHeight||0;if(!w||!h)return false;if(overlayCanvas.width!==w||overlayCanvas.height!==h){overlayCanvas.width=w;overlayCanvas.height=h;fullCanvas.width=w;fullCanvas.height=h;}return true;}
-function prepSearch(){const fw=fullCanvas.width,fh=fullCanvas.height,scale=Math.min(1,state.searchScale/Math.max(fw,fh));searchCanvas.width=Math.max(1,Math.round(fw*scale));searchCanvas.height=Math.max(1,Math.round(fh*scale));searchCtx.drawImage(fullCanvas,0,0,searchCanvas.width,searchCanvas.height);return{sx:fw/searchCanvas.width,sy:fh/searchCanvas.height};}
+        // 繝｢繝ｼ繝・ 'normal' or 'double'
+        let scanMode = 'normal';
 
-async function detectByBarcodeDetector(sx,sy){if(!state.detector)return[];try{const found=await state.detector.detect(searchCanvas);const list=[];for(const item of found){let ps=null;const cp=Array.isArray(item.cornerPoints)?item.cornerPoints:null;if(cp&&cp.length>=4)ps=cp.map(p=>({x:p.x*sx,y:p.y*sy}));else if(item.boundingBox){const b=item.boundingBox;ps=[{x:b.x*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:b.y*sy},{x:(b.x+b.width)*sx,y:(b.y+b.height)*sy},{x:b.x*sx,y:(b.y+b.height)*sy}];}if(!ps)continue;const b=expandBounds(bounds(ps,0),16,fullCanvas.width,fullCanvas.height);const roi=cropRoi(b);if(!roi)continue;const dec=decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);if(dec.length)list.push(dec[0]);}return list;}catch(e){console.warn('detector',e);return[];}}
+        let barcodeDetector = null;
+        if ('BarcodeDetector' in window) {
+            try {
+                barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+            } catch (e) { console.warn("BarcodeDetector error", e); }
+        }
 
-function askPwNeeded(){return !!(state.qr1?.management?.appEncrypted&&hasRawMeta(state.qr2)&&!state.qr2?.isDecrypted);}
-function ui(){const wait=askPwNeeded();txt('text1',state.qr1?.text||'未検出');txt('text2',wait?'候補あり（未復号）':(state.qr2?.text||(hasRawMeta(state.qr2)?'候補あり（未復号）':'未検出')));txt('mg1',state.qr1?.management?.bits||'--');txt('mg2',state.qr2?.management?.bits||'--');txt('archInfo',state.mode==='search'?'search: 2QR探索中':state.mode==='track'?'track: ROI追跡中':state.mode==='password'?'password: 第2QRの復号待ち':'paused');}
-function done(){if(state.qr1?.management?.appEncrypted&&!state.qr2?.isDecrypted)return false;if(!state.qr1?.text||!state.qr2?.text)return false;txt('finalText1',state.qr1.text);txt('finalText2',state.qr2.text);txt('finalMg1',state.qr1.management?.bits||'--');txt('finalMg2',state.qr2.management?.bits||'--');document.getElementById('resultScreen').style.display='block';document.getElementById('cameraContainer').style.display='none';document.getElementById('statusPanel').style.display='none';state.mode='paused';state.running=false;return true;}
+        // --- 證怜捷蛹悶・繧ｹ繧ｯ逕滓・ ---
+        async function sha256BytesAsync(msgBytes) {
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBytes);
+            return new Uint8Array(hashBuffer);
+        }
 
-function fullFast(){const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);const sx=fullCanvas.width/searchCanvas.width,sy=fullCanvas.height/searchCanvas.height;return decodeFast(img,0,0,sx,sy);}
-function fullRaw(){const img=fullCtx.getImageData(0,0,fullCanvas.width,fullCanvas.height);return decodeRaw(img,0,0,1,1);}
-function rawInBounds(b){const roi=cropRoi(b);return roi?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):[];}
-function tryFullRawSecond(qr1){if(!qr1?.management?.appEncrypted)return null;const raw=fullRaw();state.lastSearchCandidates=mergeCandidates(state.lastSearchCandidates||[],raw);return pickEncryptedSecond(raw,qr1);}
-function decodeTrack(entry,rawMode=false){if(!entry?.roi)return null;const roi=cropRoi(entry.roi);if(!roi)return null;const d=rawMode?decodeRaw(roi.imageData,roi.bounds.x,roi.bounds.y,1,1):decodeFast(roi.imageData,roi.bounds.x,roi.bounds.y,1,1);return d.length?withRoi(d[0],24):null;}
-function collectDecryptCandidates(){const list=[];const add=c=>{if(!hasRawMeta(c))return;if(state.qr1&&sameCandidate(c,state.qr1))return;const i=list.findIndex(v=>sameCandidate(v,c));if(i<0)list.push(c);else if(cScore(c)>cScore(list[i]))list[i]=c;};add(state.qr2);for(const c of state.lastSearchCandidates||[])add(c);return list.sort((a,b)=>cScore(b)-cScore(a));}
+        async function deriveEncryptionMaskBytesAsync(password, neededBytes) {
+            if (!password) return null;
+            const pwBytes = new TextEncoder().encode(password);
+            let h0 = await sha256BytesAsync(pwBytes);
+            let result = new Uint8Array(neededBytes);
+            let offset = 0;
+            let currentHash = h0;
+            
+            while (offset < neededBytes) {
+                const copyLen = Math.min(currentHash.length, neededBytes - offset);
+                result.set(currentHash.subarray(0, copyLen), offset);
+                offset += copyLen;
+                if (offset < neededBytes) {
+                    currentHash = await sha256BytesAsync(currentHash);
+                }
+            }
+            return result;
+        }
 
-async function processSearch(){
-  const {sx,sy}=prepSearch();
-  let cands=await detectByBarcodeDetector(sx,sy);
-  if(cands.length<2)cands=mergeCandidates(cands,fullFast());
-  let pair=chooseBestPair(cands);
-  if(!pair.first||(!pair.second&&pair.first)){
-    cands=mergeCandidates(cands,decodeFast(fullCtx.getImageData(0,0,fullCanvas.width,fullCanvas.height),0,0,1,1));
-    pair=chooseBestPair(cands);
-  }
+        const SIGNER_PUBLIC_KEYS = [
+            { id: 1, name: "山田 一郎", pubX: "a4f9ea261c4b94cebe167a6768e7d0d19b8ded66", pubY: "9633c5f6bc3fddd6bd69c51b3ea266e1e28f269a" },
+            { id: 2, name: "鈴木 二郎", pubX: "f693fc1b59d8f0d91c87d07e2ddc4dcb4ab01c85", pubY: "f374de9b03291885a09ec52722e6e841553e9170" },
+            { id: 3, name: "佐藤 三郎", pubX: "9842d2e190b9a22162f2347be2506746fa554c2e", pubY: "28c92d91a0a7b7c3a57235d8deace9d9a1fee540" },
+            { id: 4, name: "高橋 四子", pubX: "90c03636a87f8e51467560ee10d26bc370f5d0fd", pubY: "504137e301c39a6c5891453179db1a0f118e2c55" },
+            { id: 5, name: "田中 五郎", pubX: "aba186ca0ff813e5074f067825ab49871911e5b9", pubY: "11b153b83f47c7b3a272dadea5018441fc38a831" },
+            { id: 6, name: "伊藤 六子", pubX: "2c63358818e8387d1df76954e479eaafde2223ac", pubY: "2c71db7159ae0f9ff30bbaefe03453d04e531b4b" },
+            { id: 7, name: "渡辺 七郎", pubX: "dcd9fdb90a29473ae74ca2597ddc189d7e140596", pubY: "201d407b22ae9f5a615345ab7c61947b64089b9f" },
+            { id: 8, name: "小林 八子", pubX: "5c6954a5eb8babe0fd685842fb9f6ace5da07c84", pubY: "f12714c2d19fb5b7daad34540074bcb1429739c1" },
+            { id: 9, name: "加藤 九郎", pubX: "95ea13177890642432b6c3443c7380a8be390f87", pubY: "31a4490f195b58aa1ccb030830157c4a5d5aaac8" },
+            { id: 10, name: "中村 十郎", pubX: "6a339c7c16a96749825a212199a9b1ff0b934249", pubY: "d5a448ba5e3043b47184e61018164acce347ac9a" }
+        ];
+        const SIGNER_BY_ID = new Map(SIGNER_PUBLIC_KEYS.map((k) => [k.id, k]));
 
-  const runHeavyFallback=(state.searchMiss%3)===0;
-  if(runHeavyFallback&&pair.first&&!pair.second){
-    cands=mergeCandidates(cands,fullRaw());
-    pair=chooseBestPair(cands);
-  }
+        const EC160 = {
+            p: BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7FFFFFFF"),
+            a: BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7FFFFFFC"),
+            gx: BigInt("0x4A96B5688EF573284664698968C38BB913CBFC82"),
+            gy: BigInt("0x23A628553168947D59DCC912042351377AC5FB32"),
+            n: BigInt("0x0100000000000000000001F4C8F927AED3CA752257")
+        };
+        const EC160_G = { x: EC160.gx, y: EC160.gy };
 
-  state.lastSearchCandidates=cands;
-  let {first,second}=pair;
-  if(first?.management?.appEncrypted){
-    if(second&&sameCandidate(first,second))second=null;
-    let raw=[];
-    if(second?.bounds)raw=mergeCandidates(raw,rawInBounds(expandBounds(second.bounds,20,fullCanvas.width,fullCanvas.height)));
-    if(!raw.length){
-      const img=searchCtx.getImageData(0,0,searchCanvas.width,searchCanvas.height);
-      raw=mergeCandidates(raw,decodeRaw(img,0,0,sx,sy));
-    }
-    if(!raw.length&&runHeavyFallback)raw=mergeCandidates(raw,fullRaw());
-    cands=mergeCandidates(cands,raw);
-    state.lastSearchCandidates=cands;
-    const rs=pickEncryptedSecond(cands,first,second);
-    if(rs)second=rs;
-  }
+        let signatureAuth = { enabled: false, verified: false, senderName: "", message: "" };
 
-  if(first&&second)state.searchMiss=0;else state.searchMiss=Math.min(999,state.searchMiss+1);
+        function modBI(x, m) {
+            const r = x % m;
+            return r >= 0n ? r : r + m;
+        }
 
-  if(first){
-    state.qr1=withRoi(first,24);
-    state.qr2=second?withRoi(second,24):null;
-    state.lostCount=0;
-    state.mode='track';
-    overlay();
-    ui();
-    if(askPwNeeded()){showPasswordScreen();return;}
-    done();
-  }else{
-    overlay();
-    ui();
-  }
-}
-async function processTrack(){
-  const n1=decodeTrack(state.qr1,false),n2=decodeTrack(state.qr2,false);
-  if(n1)state.qr1=withRoi(mergeInfo(state.qr1,n1),24);
-  if(n2)state.qr2=withRoi(mergeInfo(state.qr2,n2),24);
+        function invModBI(a, m) {
+            let t = 0n;
+            let newT = 1n;
+            let r = m;
+            let newR = modBI(a, m);
+            while (newR !== 0n) {
+                const q = r / newR;
+                [t, newT] = [newT, t - q * newT];
+                [r, newR] = [newR, r - q * newR];
+            }
+            if (r !== 1n) throw new Error("逆元が存在しません");
+            return t < 0n ? t + m : t;
+        }
 
-  if(state.qr1?.management?.appEncrypted&&!hasRawMeta(state.qr2)){
-    let r2=decodeTrack(state.qr2,true);
-    if(!r2&&state.qr2?.bounds){
-      const near=rawInBounds(expandBounds(state.qr2.bounds,20,fullCanvas.width,fullCanvas.height));
-      if(near.length){
-        const p=pickEncryptedSecond(near,state.qr1,state.qr2)||near[0];
-        r2=withRoi(p,24);
-      }
-    }
-    if(!r2)r2=tryFullRawSecond(state.qr1);
-    if(!r2&&state.lastSearchCandidates.length){
-      const back=pickEncryptedSecond(state.lastSearchCandidates,state.qr1,state.qr2);
-      if(back)r2=withRoi(back,24);
-    }
-    if(r2)state.qr2=withRoi(mergeInfo(state.qr2,r2),24);
-  }
+        function ecAdd(P, Q) {
+            if (!P) return Q;
+            if (!Q) return P;
+            if (P.x === Q.x) {
+                if (modBI(P.y + Q.y, EC160.p) === 0n) return null;
+                return ecDouble(P);
+            }
+            const lambda = modBI((Q.y - P.y) * invModBI(Q.x - P.x, EC160.p), EC160.p);
+            const xr = modBI(lambda * lambda - P.x - Q.x, EC160.p);
+            const yr = modBI(lambda * (P.x - xr) - P.y, EC160.p);
+            return { x: xr, y: yr };
+        }
 
-  if(!n1&&!n2)state.lostCount++;else state.lostCount=0;
-  if(state.lostCount>=state.maxLost){
-    state.mode='search';
-    state.qr1=null;
-    state.qr2=null;
-    overlay();
-    ui();
-    return;
-  }
+        function ecDouble(P) {
+            if (!P || P.y === 0n) return null;
+            const lambda = modBI((3n * P.x * P.x + EC160.a) * invModBI(2n * P.y, EC160.p), EC160.p);
+            const xr = modBI(lambda * lambda - 2n * P.x, EC160.p);
+            const yr = modBI(lambda * (P.x - xr) - P.y, EC160.p);
+            return { x: xr, y: yr };
+        }
 
-  if((!state.qr2||sameCandidate(state.qr1,state.qr2)||(state.qr1?.management?.appEncrypted&&!hasRawMeta(state.qr2)))&&state.lastSearchCandidates.length>1){
-    const sec=state.qr1?.management?.appEncrypted?pickEncryptedSecond(state.lastSearchCandidates,state.qr1,state.qr2):chooseBestPair(state.lastSearchCandidates).second;
-    if(sec)state.qr2=withRoi(mergeInfo(state.qr2,sec),24);
-  }
+        function ecMul(k, P) {
+            let n = modBI(k, EC160.n);
+            if (n === 0n || !P) return null;
+            let R = null;
+            let A = P;
+            while (n > 0n) {
+                if (n & 1n) R = ecAdd(R, A);
+                A = ecDouble(A);
+                n >>= 1n;
+            }
+            return R;
+        }
 
-  overlay();
-  ui();
-  if(askPwNeeded()){showPasswordScreen();return;}
-  done();
-}
-async function loop(){if(!state.running)return;state.rafId=requestAnimationFrame(loop);const now=performance.now(),intv=state.mode==='track'?state.trackInterval:state.searchInterval;if(now-state.lastProcessAt<intv)return;state.lastProcessAt=now;if(!fitVideo())return;fullCtx.drawImage(video,0,0,fullCanvas.width,fullCanvas.height);if(state.mode==='password'||state.mode==='paused'){overlay();return;}try{if(state.mode==='search')await processSearch();else await processTrack();}catch(e){console.error(e);txt('archInfo','error: '+String(e?.message||e));state.mode='search';}}
+        function bytesToBigInt(bytes) {
+            let x = 0n;
+            for (let i = 0; i < bytes.length; i++) {
+                x = (x << 8n) | BigInt(bytes[i]);
+            }
+            return x;
+        }
 
-async function createDetector(){if(!('BarcodeDetector'in window)){state.detector=null;txt('detectorInfo','エンジン: jsQR ROI');return;}try{const s=await BarcodeDetector.getSupportedFormats();if(s.includes('qr_code')){state.detector=new BarcodeDetector({formats:['qr_code']});txt('detectorInfo','エンジン: BarcodeDetector + jsQR ROI');return;}}catch(e){console.warn(e);}state.detector=null;txt('detectorInfo','エンジン: jsQR ROI');}
+        function getMgmtBits(mgmtCode) {
+            if (mgmtCode === undefined || mgmtCode === null) return "0000000000000000";
+            return Number(mgmtCode >>> 0).toString(2).padStart(16, '0');
+        }
 
-async function startCamera(){if(state.starting)return false;state.starting=true;try{if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});state.stream=stream;video.srcObject=stream;await new Promise(r=>{if(video.readyState>=1)return r();video.addEventListener('loadedmetadata',r,{once:true});});await video.play().catch(()=>{});return true;}catch(err){alert('カメラを起動できませんでした。\nエラー: '+(err?.message||err));return false;}finally{state.starting=false;}}
-function stopCamera(){state.running=false;cancelAnimationFrame(state.rafId);state.rafId=0;try{video.pause();}catch{}if(state.stream){for(const t of state.stream.getTracks())t.stop();state.stream=null;}video.srcObject=null;}
+        function isSignatureManagement(mgmtCode) {
+            const bits = getMgmtBits(mgmtCode);
+            return bits.slice(8, 11) === "010";
+        }
 
-function sha256Bytes(msgBytes){
-  const K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
-  const rotr=(x,n)=>(x>>>n)|(x<<(32-n)),ch=(x,y,z)=>(x&y)^(~x&z),maj=(x,y,z)=>(x&y)^(x&z)^(y&z),s0=x=>rotr(x,7)^rotr(x,18)^(x>>>3),s1=x=>rotr(x,17)^rotr(x,19)^(x>>>10),S0=x=>rotr(x,2)^rotr(x,13)^rotr(x,22),S1=x=>rotr(x,6)^rotr(x,11)^rotr(x,25);
-  const ml=msgBytes.length,bitLenHi=Math.floor((ml*8)/0x100000000),bitLenLo=(ml*8)>>>0,withOne=ml+1,padLen=(withOne%64<=56)?(56-(withOne%64)):(56+64-(withOne%64)),totalLen=withOne+padLen+8,m=new Uint8Array(totalLen);
-  m.set(msgBytes,0);m[ml]=0x80;
-  const dv=new DataView(m.buffer);dv.setUint32(totalLen-8,bitLenHi,false);dv.setUint32(totalLen-4,bitLenLo,false);
-  let a=0x6a09e667,b=0xbb67ae85,c=0x3c6ef372,d=0xa54ff53a,e=0x510e527f,f=0x9b05688c,g=0x1f83d9ab,h=0x5be0cd19;
-  const W=new Uint32Array(64);
-  for(let off=0;off<m.length;off+=64){
-    for(let i=0;i<16;i++)W[i]=dv.getUint32(off+i*4,false);
-    for(let i=16;i<64;i++)W[i]=(s1(W[i-2])+W[i-7]+s0(W[i-15])+W[i-16])>>>0;
-    let A=a,B=b,C=c,D=d,E=e,F=f,G=g,H=h;
-    for(let i=0;i<64;i++){const t1=(H+S1(E)+ch(E,F,G)+K[i]+W[i])>>>0,t2=(S0(A)+maj(A,B,C))>>>0;H=G;G=F;F=E;E=(D+t1)>>>0;D=C;C=B;B=A;A=(t1+t2)>>>0;}
-    a=(a+A)>>>0;b=(b+B)>>>0;c=(c+C)>>>0;d=(d+D)>>>0;e=(e+E)>>>0;f=(f+F)>>>0;g=(g+G)>>>0;h=(h+H)>>>0;
-  }
-  const out=new Uint8Array(32),odv=new DataView(out.buffer);
-  odv.setUint32(0,a,false);odv.setUint32(4,b,false);odv.setUint32(8,c,false);odv.setUint32(12,d,false);odv.setUint32(16,e,false);odv.setUint32(20,f,false);odv.setUint32(24,g,false);odv.setUint32(28,h,false);
-  return out;
-}
-function utf8Bytes(str){return new TextEncoder().encode(String(str??''));}
-function deriveMask(password,needed){const out=new Uint8Array(needed);let filled=0,h=sha256Bytes(utf8Bytes(password));while(filled<needed){const take=Math.min(32,needed-filled);out.set(h.subarray(0,take),filled);filled+=take;if(filled>=needed)break;h=sha256Bytes(h);}return out;}
-async function startApp(){const b=document.getElementById('startBtn');b.disabled=true;b.innerText='起動中...';if(typeof jsQR==='undefined'){alert('jsQR.js の読み込みに失敗しました。');b.disabled=false;b.innerText='カメラを起動する';return;}await createDetector();if(!await startCamera()){b.disabled=false;b.innerText='カメラを起動する';return;}document.getElementById('startScreen').style.display='none';document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.appPassword=null;state.appMask=null;state.lostCount=0;state.searchMiss=0;ui();requestAnimationFrame(loop);} 
-function showPasswordScreen(){state.mode='password';document.getElementById('appPasswordInput').value='';document.getElementById('passwordScreen').style.display='flex';ui();}
-function cancelPassword(){document.getElementById('passwordScreen').style.display='none';state.mode='track';ui();}
-function submitPassword(){
-  const pw=document.getElementById('appPasswordInput').value;
-  if(pw===''){alert('パスワードを入力してください。');return;}
-  const candidates=collectDecryptCandidates();
-  if(!candidates.length){alert('第2QRの暗号データがまだ取得できていません。');return;}
-  if(typeof jsQR==='undefined'||typeof jsQR.resumeDecode!=='function'){alert('jsQR.resumeDecode が見つかりません。');return;}
+        function verifySignature160(hashBytes, signatureBytes, sender) {
+            if (!signatureBytes || signatureBytes.length !== 40) return false;
+            const r = bytesToBigInt(signatureBytes.slice(0, 20));
+            const s = bytesToBigInt(signatureBytes.slice(20, 40));
+            if (r <= 0n || r >= EC160.n || s <= 0n || s >= EC160.n) return false;
 
-  state.appPassword=pw;
-  const maskCache=new Map();
-  for(const cand of candidates){
-    const meta=getRawMeta(cand);
-    if(!meta)continue;
+            const z = modBI(bytesToBigInt(hashBytes), EC160.n);
+            let w;
+            try {
+                w = invModBI(s, EC160.n);
+            } catch (_e) {
+                return false;
+            }
 
-    let mask=maskCache.get(meta.codewords.length);
-    if(!mask){
-      mask=deriveMask(state.appPassword,meta.codewords.length);
-      maskCache.set(meta.codewords.length,mask);
-    }
+            const u1 = modBI(z * w, EC160.n);
+            const u2 = modBI(r * w, EC160.n);
+            const pub = { x: BigInt("0x" + sender.pubX), y: BigInt("0x" + sender.pubY) };
+            const P = ecAdd(ecMul(u1, EC160_G), ecMul(u2, pub));
+            if (!P) return false;
+            return modBI(P.x, EC160.n) === r;
+        }
 
-    const dec=jsQR.resumeDecode(meta,mask);
-    if(!(dec&&(dec.text||dec.data)))continue;
+        async function verifyTwinSignatureIfNeeded(qr1, qr2) {
+            const ret = { enabled: false, verified: false, senderName: "", message: "" };
+            if (!qr2 || !isSignatureManagement(qr2.managementCode)) return ret;
 
-    const decryptedRaw=Uint8Array.from(meta.codewords,(v,i)=>v^mask[i]);
-    const rawMeta={codewords:Array.from(decryptedRaw),version:meta.version,formatInfo:meta.formatInfo};
+            ret.enabled = true;
+            const payload = qr2.binaryData ? Uint8Array.from(qr2.binaryData) : null;
+            if (!payload || payload.length < 42) {
+                ret.message = "電子署名の認証ができませんでした";
+                return ret;
+            }
 
-    state.appMask=mask;
-    state.qr2=withRoi(mergeInfo(state.qr2,cand),24);
-    state.qr2=withRoi({...state.qr2,text:dec.text||dec.data,managementCode:dec.managementCode??null,management:parseManagement(dec.managementBits||dec.managementCode),rawBytes:decryptedRaw,rawData:rawMeta,version:meta.version,versionNumber:meta.version?.versionNumber??state.qr2?.versionNumber??null,formatInfo:meta.formatInfo,isDecrypted:true},24);
+            const keyId = (payload[0] << 8) | payload[1];
+            const sender = SIGNER_BY_ID.get(keyId);
+            if (!sender) {
+                ret.message = "電子署名の認証ができませんでした";
+                return ret;
+            }
 
-    document.getElementById('passwordScreen').style.display='none';
-    ui();
-    done();
-    if(state.running)state.mode='track';
-    return;
-  }
+            if (!qr1 || !qr1.codewords || qr1.codewords.length === 0) {
+                ret.message = "電子署名の認証ができませんでした";
+                return ret;
+            }
 
-  alert('パスワードが違うか、データが破損しています。');
-  document.getElementById('passwordScreen').style.display='none';
-  state.mode='track';
-  ui();
-}
-function goBack(){document.getElementById('resultScreen').style.display='none';document.getElementById('cameraContainer').style.display='block';document.getElementById('statusPanel').style.display='block';state.mode='search';state.running=true;state.lastProcessAt=0;state.qr1=null;state.qr2=null;state.lastSearchCandidates=[];state.searchMiss=0;requestAnimationFrame(loop);} 
-window.startApp=startApp;window.submitPassword=submitPassword;window.cancelPassword=cancelPassword;window.goBack=goBack;
-</script>
+            const signatureBytes = payload.slice(2, 42);
+            const hash = await sha256BytesAsync(Uint8Array.from(qr1.codewords));
+            const ok = verifySignature160(hash, signatureBytes, sender);
+
+            ret.verified = ok;
+            ret.senderName = sender.name;
+            ret.message = ok
+                ? `電子署名の認証ができました。作成者は${sender.name}です。`
+                : "電子署名の認証ができませんでした";
+            return ret;
+        }
+        // --- 謠冗判髢｢謨ｰ ---
+        const drawLine = (begin, end, color) => {
+            ctx.beginPath();
+            ctx.moveTo(begin.x, begin.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        };
+
+        const drawBoundingBox = (points, color) => {
+            if (!points || points.length !== 4) return;
+            drawLine(points[0], points[1], color);
+            drawLine(points[1], points[2], color);
+            drawLine(points[2], points[3], color);
+            drawLine(points[3], points[0], color);
+        };
+        
+        const hasDecodedPayload = (res) => {
+            if (!res || res.isRaw) return false;
+            const hasText = typeof res.data === "string" && res.data.length > 0;
+            const hasBinary = !!(res.binaryData && res.binaryData.length > 0);
+            return hasText || hasBinary;
+        };
+
+        // --- 繧ｫ繝｡繝ｩ蛻ｶ蠕｡ ---
+        async function startCamera() {
+            try {
+                statusText.innerText = "繧ｫ繝｡繝ｩ繧偵Μ繧ｯ繧ｨ繧ｹ繝井ｸｭ...";
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                
+                await new Promise((resolve) => {
+                    video.onloadeddata = () => resolve();
+                    setTimeout(resolve, 2000);
+                });
+                
+                try {
+                    await video.play();
+                } catch(e) {
+                    statusText.innerText = "逕ｻ髱｢繧偵ち繝・・縺励※蜀咲函繧定ｨｱ蜿ｯ縺励※縺上□縺輔＞";
+                    return;
+                }
+
+                document.getElementById('btnContainer').style.display = 'none';
+                document.getElementById('cameraControls').style.display = 'flex';
+                scanStage = 1;
+                isScanning = true;
+                signatureAuth = { enabled: false, verified: false, senderName: '', message: '' };
+
+                if (scanMode === 'normal') {
+                    statusText.innerText = "隨ｬ1QR繧呈爾邏｢荳ｭ... (Hybrid)";
+                } else {
+                    statusText.innerText = "隨ｬ1QR・医す繧ｹ繝・Β證怜捷蛹厄ｼ峨ｒ謗｢邏｢荳ｭ...";
+                }
+                requestAnimationFrame(scanLoop);
+                
+            } catch (err) {
+                statusText.innerText = "繧ｨ繝ｩ繝ｼ: " + err.message;
+            }
+        }
+
+        // 繝｢繝ｼ繝蛾∈謚槭・繧ｿ繝ｳ
+        document.getElementById('normalModeBtn').addEventListener('click', () => {
+            scanMode = 'normal';
+            document.getElementById('headerText').innerText = 'QR Twin Reader (騾壼ｸｸ繝｢繝ｼ繝・';
+            startCamera();
+        });
+
+        document.getElementById('doubleEncModeBtn').addEventListener('click', () => {
+            scanMode = 'double';
+            document.getElementById('headerText').innerText = 'QR Twin Reader (莠碁㍾證怜捷蛹悶Δ繝ｼ繝・';
+            startCamera();
+        });
+
+        // --- UI 繧｢繧ｯ繧ｷ繝ｧ繝ｳ ---
+        function showPasswordScreen() {
+            if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+            
+            isScanning = false;
+            scanStage = 2;
+            document.getElementById('qr1PreviewText').innerText = firstQR.text;
+            document.getElementById('appPasswordInput').value = "";
+            document.getElementById('passwordScreen').style.display = 'flex';
+        }
+
+        function showSysEncScreen() {
+            if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+            
+            isScanning = false;
+            scanStage = 2;
+            document.getElementById('sysEncQr1Text').innerText = firstQR.text;
+            document.getElementById('sysEncScreen').style.display = 'flex';
+        }
+
+        function showDoubleEncScreen() {
+            if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+            
+            isScanning = false;
+            scanStage = 2;
+            document.getElementById('doubleEncQr1Text').innerText = firstQR.text;
+            document.getElementById('doubleEncPasswordInput').value = "";
+            document.getElementById('doubleEncScreen').style.display = 'flex';
+        }
+
+        function cancelPassword() {
+            document.getElementById('passwordScreen').style.display = 'none';
+            goBack();
+        }
+
+        function cancelSysEnc() {
+            document.getElementById('sysEncScreen').style.display = 'none';
+            goBack();
+        }
+
+        function cancelDoubleEnc() {
+            document.getElementById('doubleEncScreen').style.display = 'none';
+            goBack();
+        }
+
+        async function submitPassword() {
+            const pw = document.getElementById('appPasswordInput').value;
+            if (!pw) {
+                alert("繝代せ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞");
+                return;
+            }
+            
+            document.getElementById('passwordScreen').style.display = 'none';
+            statusText.innerText = "繝槭せ繧ｯ逕滓・荳ｭ...";
+            
+            appMask = await deriveEncryptionMaskBytesAsync(pw, 5000);
+            
+            scanStage = 3;
+            if (firstQR) firstQR.points = null;
+            
+            statusText.innerText = "隨ｬ2QR繧呈爾邏｢荳ｭ... (jsQR XOR)";
+            isScanning = true;
+            lastDetectTime = Date.now();
+            requestAnimationFrame(scanLoop);
+        }
+
+        function resumeAfterSysEnc() {
+            document.getElementById('sysEncScreen').style.display = 'none';
+            
+            scanStage = 3;
+            sysEncStage3 = true; // 繧ｷ繧ｹ繝・Β證怜捷蛹門ｾｩ蜿ｷ繝｢繝ｼ繝峨ｒON
+            if (firstQR) firstQR.points = null;
+            
+            statusText.innerText = "隨ｬ2QR・医す繧ｹ繝・Β證怜捷蛹厄ｼ峨ｒ謗｢邏｢荳ｭ...";
+            isScanning = true;
+            lastDetectTime = Date.now();
+            requestAnimationFrame(scanLoop);
+        }
+
+        async function resumeAfterDoubleEnc() {
+            const pw = document.getElementById('doubleEncPasswordInput').value;
+            if (!pw) {
+                alert("繝代せ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞");
+                return;
+            }
+
+            document.getElementById('doubleEncScreen').style.display = 'none';
+            statusText.innerText = "繝槭せ繧ｯ逕滓・荳ｭ...";
+            
+            // 蜈･蜉帙＆繧後◆繝代せ繝ｯ繝ｼ繝峨ｒ菴ｿ逕ｨ縺励※隨ｬ2QR縺ｮ繝槭せ繧ｯ逕滓・
+            appMask = await deriveEncryptionMaskBytesAsync(pw, 5000);
+            
+            scanStage = 3;
+            if (firstQR) firstQR.points = null;
+            
+            statusText.innerText = "隨ｬ2QR・医い繝励Μ證怜捷蛹厄ｼ峨ｒ謗｢邏｢荳ｭ...";
+            isScanning = true;
+            lastDetectTime = Date.now();
+            requestAnimationFrame(scanLoop);
+        }
+
+        function showResultScreen() {
+            if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+            
+            isScanning = false;
+            const resLabel2 = document.getElementById('resLabel2');
+            const commentEl = document.getElementById('authComment');
+
+            document.getElementById('resText1').innerText = firstQR ? firstQR.text : '-';
+
+            if (signatureAuth && signatureAuth.enabled) {
+                if (signatureAuth.verified) {
+                    if (resLabel2) resLabel2.innerText = '電子署名';
+                    document.getElementById('resText2').innerText = `電子署名(${signatureAuth.senderName})`;
+                } else {
+                    if (resLabel2) resLabel2.innerText = '電子署名';
+                    document.getElementById('resText2').innerText = '電子署名の認証ができませんでした';
+                }
+                if (commentEl) commentEl.innerText = signatureAuth.message || '';
+            } else {
+                if (resLabel2) resLabel2.innerText = '隨ｬ2QR';
+                document.getElementById('resText2').innerText = secondQR ? secondQR.text : '-';
+                if (commentEl) commentEl.innerText = '';
+            }
+
+            document.getElementById('resultScreen').style.display = 'flex';
+        }
+
+        function goBack() {
+            document.getElementById('resultScreen').style.display = 'none';
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('sysEncScreen').style.display = 'none';
+            document.getElementById('doubleEncScreen').style.display = 'none';
+            firstQR = null;
+            secondQR = null;
+            appMask = null;
+            signatureAuth = { enabled: false, verified: false, senderName: "", message: "" };
+            sysEncStage3 = false;
+            lastTwinBBox = null;
+            
+            // 繝｢繝ｼ繝蛾∈謚樒判髱｢縺ｫ謌ｻ縺・
+            scanStage = 0;
+            isScanning = false;
+            document.getElementById('cameraControls').style.display = 'none';
+            document.getElementById('btnContainer').style.display = '';
+            statusText.innerText = "繝｢繝ｼ繝峨ｒ驕ｸ謚槭＠縺ｦ縺上□縺輔＞";
+            document.getElementById('headerText').innerText = 'QR Twin Reader (繧ｷ繧ｹ繝・Β證怜捷蛹門ｯｾ蠢・';
+        }
+
+        function restartScan() {
+            document.getElementById('resultScreen').style.display = 'none';
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('sysEncScreen').style.display = 'none';
+            document.getElementById('doubleEncScreen').style.display = 'none';
+            firstQR = null;
+            secondQR = null;
+            appMask = null;
+            signatureAuth = { enabled: false, verified: false, senderName: "", message: "" };
+            sysEncStage3 = false;
+            lastTwinBBox = null;
+
+            scanStage = 1;
+            isScanning = true;
+            
+            if (scanMode === 'normal') {
+                statusText.innerText = "隨ｬ1QR繧呈爾邏｢荳ｭ... (Hybrid)";
+            } else {
+                statusText.innerText = "隨ｬ1QR・医す繧ｹ繝・Β證怜捷蛹厄ｼ峨ｒ謗｢邏｢荳ｭ...";
+            }
+            
+            requestAnimationFrame(scanLoop);
+        }
+
+        // --- 繝｡繧､繝ｳ繧ｹ繧ｭ繝｣繝ｳ繝ｫ繝ｼ繝・---
+        async function scanLoop() {
+            if (!isScanning) return;
+
+            if (video.videoWidth && overlayCanvas.width !== video.videoWidth) {
+                overlayCanvas.width = video.videoWidth;
+                overlayCanvas.height = video.videoHeight;
+            }
+
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            if (firstQR && firstQR.points) drawBoundingBox(firstQR.points, '#00E676');
+            if (secondQR && secondQR.points) drawBoundingBox(secondQR.points, '#29B6F6');
+
+            const now = Date.now();
+            if (!isProcessing && now - lastDetectTime > SCAN_INTERVAL_MS && video.readyState >= 2) {
+                isProcessing = true;
+                lastDetectTime = now;
+
+                try {
+                    let detectedItems = [];
+
+                    // === 騾壼ｸｸ繝｢繝ｼ繝・ Stage 1 ===
+                    // 莠碁㍾證怜捷蛹悶Δ繝ｼ繝峨・ Stage 1 縺ｧ縺ｯ繧ｷ繧ｹ繝・Β證怜捷蛹悶＆繧後◆隨ｬ1QR繧呈爾縺・
+                    // 竊・jsQR 縺ｮ sysEncDecode 繧剃ｽｿ縺・
+                    const needSysEncForStage1 = (scanMode === 'double' && scanStage === 1);
+                    // 騾壼ｸｸ繝｢繝ｼ繝峨・ Stage 3 縺ｧ繧ｷ繧ｹ繝・Β證怜捷蛹悶＆繧後◆隨ｬ2QR繧呈爾縺吝ｴ蜷・
+                    const needSysEncForStage3 = (scanMode === 'normal' && scanStage === 3 && sysEncStage3);
+
+                    let useNativeDetector = barcodeDetector && scanStage === 1;
+                    // 繧ｷ繧ｹ繝・Β證怜捷蛹門ｾｩ蜿ｷ縺悟ｿ・ｦ√↑蝣ｴ蜷医・繝阪う繝・ぅ繝悶〒縺ｯ縺ｪ縺祝sQR繧剃ｽｿ縺・
+                    if (needSysEncForStage1) {
+                        useNativeDetector = false;
+                    }
+
+                    let cropBBox = null;
+
+                    // --- [繝輔ぉ繝ｼ繧ｺ 1 / 繝阪う繝・ぅ繝門━蜈・ Hybrid (BarcodeDetector Crop + jsQR) ---
+                    if (useNativeDetector) {
+                        try {
+                            const barcodes = await barcodeDetector.detect(video);
+                            if (barcodes && barcodes.length > 0) {
+                                for (let i = 0; i < barcodes.length; i++) {
+                                    const b = barcodes[i];
+
+                                    if (scanStage === 3) {
+                                        detectedItems.push({
+                                            data: b.rawValue,
+                                            managementCode: undefined,
+                                            points: b.cornerPoints
+                                        });
+                                        continue;
+                                    }
+
+                                    const bbox = b.boundingBox;
+                                    const PADDING = 50; 
+                                    const sx = Math.max(0, Math.floor(bbox.x) - PADDING);
+                                    const sy = Math.max(0, Math.floor(bbox.y) - PADDING);
+                                    const sw = Math.min(video.videoWidth - sx, Math.ceil(bbox.width) + PADDING * 2);
+                                    const sh = Math.min(video.videoHeight - sy, Math.ceil(bbox.height) + PADDING * 2);
+
+                                    zxingCanvas.width = sw;
+                                    zxingCanvas.height = sh;
+                                    zxingCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+                                    const imgData = zxingCtx.getImageData(0, 0, sw, sh);
+
+                                    const res = jsQR(imgData.data, sw, sh, { inversionAttempts: "attemptBoth" });
+                                    
+                                    if (hasDecodedPayload(res)) {
+                                        detectedItems.push({
+                                            data: res.data,
+                                            managementCode: res.managementCode,
+                                            binaryData: res.binaryData,
+                                            codewords: res.codewords || (res.rawMatrixData && res.rawMatrixData.codewords) || null,
+                                            points: [
+                                                { x: res.location.topLeftCorner.x + sx, y: res.location.topLeftCorner.y + sy },
+                                                { x: res.location.topRightCorner.x + sx, y: res.location.topRightCorner.y + sy },
+                                                { x: res.location.bottomRightCorner.x + sx, y: res.location.bottomRightCorner.y + sy },
+                                                { x: res.location.bottomLeftCorner.x + sx, y: res.location.bottomLeftCorner.y + sy }
+                                            ]
+                                        });
+                                    }
+                                }
+                            }
+                        } catch(err) { /* ignore Native Error */ }
+                    }
+
+                    // --- [繝輔ぉ繝ｼ繧ｺ 2] BarcodeDetector菴咲ｽｮ讀懷・ + jsQR繧ｯ繝ｭ繝・・蠕ｩ蜿ｷ (appMask蟆ら畑繝上う繝悶Μ繝・ラ) ---
+                    // appMask險ｭ螳壽凾: BarcodeDetector縺ｧQR縺ｮ菴咲ｽｮ縺縺第､懷・竊偵け繝ｭ繝・・竊男sQR縺ｧ證怜捷蠕ｩ蜿ｷ
+                    // BarcodeDetector閾ｪ霄ｫ縺ｯ證怜捷蛹鵬R繧貞ｾｩ蜿ｷ縺ｧ縺阪↑縺・′縲∽ｽ咲ｽｮ讀懷・縺ｯ鬮倬溘↓陦後∴繧・
+                    if (detectedItems.length === 0 && barcodeDetector && scanStage === 3 && appMask) {
+                        try {
+                            const barcodes = await barcodeDetector.detect(video);
+                            if (barcodes && barcodes.length > 0) {
+                                for (let i = 0; i < barcodes.length; i++) {
+                                    const b = barcodes[i];
+                                    const bbox = b.boundingBox;
+                                    const PADDING = 50;
+                                    const sx = Math.max(0, Math.floor(bbox.x) - PADDING);
+                                    const sy = Math.max(0, Math.floor(bbox.y) - PADDING);
+                                    const sw = Math.min(video.videoWidth - sx, Math.ceil(bbox.width) + PADDING * 2);
+                                    const sh = Math.min(video.videoHeight - sy, Math.ceil(bbox.height) + PADDING * 2);
+
+                                    zxingCanvas.width = sw;
+                                    zxingCanvas.height = sh;
+                                    zxingCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+                                    const imgData = zxingCtx.getImageData(0, 0, sw, sh);
+
+                                    const cropRes = jsQR(imgData.data, sw, sh, {
+                                        inversionAttempts: "attemptBoth",
+                                        appEncMask: Array.from(appMask)
+                                    });
+
+                                    if (hasDecodedPayload(cropRes)) {
+                                        detectedItems.push({
+                                            data: cropRes.data,
+                                            managementCode: cropRes.managementCode,
+                                            binaryData: cropRes.binaryData,
+                                            codewords: cropRes.codewords || (cropRes.rawMatrixData && cropRes.rawMatrixData.codewords) || null,
+                                            points: [
+                                                { x: cropRes.location.topLeftCorner.x + sx, y: cropRes.location.topLeftCorner.y + sy },
+                                                { x: cropRes.location.topRightCorner.x + sx, y: cropRes.location.topRightCorner.y + sy },
+                                                { x: cropRes.location.bottomRightCorner.x + sx, y: cropRes.location.bottomRightCorner.y + sy },
+                                                { x: cropRes.location.bottomLeftCorner.x + sx, y: cropRes.location.bottomLeftCorner.y + sy }
+                                            ]
+                                        });
+                                    }
+                                }
+                            }
+                        } catch(err) { /* ignore */ }
+                    }
+
+                    // --- [繝輔ぉ繝ｼ繧ｺ 2.5] Stage 1菴咲ｽｮ蜀榊茜逕ｨ + jsQR繧ｯ繝ｭ繝・・蠕ｩ蜿ｷ (莠碁㍾證怜捷蛹悶↑縺ｩBarcodeDetector螟ｱ謨玲凾逕ｨ) ---
+                    // Stage 1縺ｧ譌｢縺ｫ繝・う繝ｳ縺ｮ蠎ｧ讓吶ｒ蜿門ｾ励＠縺ｦ縺・ｋ縺溘ａ縲√◎縺ｮ蜻ｨ霎ｺ縺縺代ｒ謗｢縺吶％縺ｨ縺ｧ繝輔Ν繧ｹ繧ｯ繝ｪ繝ｼ繝ｳ繧貞屓驕ｿ縺吶ｋ
+                    if (detectedItems.length === 0 && scanStage === 3 && appMask && lastTwinBBox) {
+                        const bbox = lastTwinBBox;
+                        const PADDING = 80; // 螟壼ｰ代・繧ｫ繝｡繝ｩ謠ｺ繧後ｒ蜷ｸ蜿弱☆繧九◆繧∝ｺ・ａ縺ｫ
+                        const sx = Math.max(0, Math.floor(bbox.x) - PADDING);
+                        const sy = Math.max(0, Math.floor(bbox.y) - PADDING);
+                        const sw = Math.min(video.videoWidth - sx, Math.ceil(bbox.width) + PADDING * 2);
+                        const sh = Math.min(video.videoHeight - sy, Math.ceil(bbox.height) + PADDING * 2);
+
+                        if (sw > 0 && sh > 0) {
+                            zxingCanvas.width = sw;
+                            zxingCanvas.height = sh;
+                            zxingCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+                            const imgData = zxingCtx.getImageData(0, 0, sw, sh);
+
+                            const cropRes = jsQR(imgData.data, sw, sh, {
+                                inversionAttempts: "attemptBoth",
+                                appEncMask: Array.from(appMask)
+                            });
+
+                            if (hasDecodedPayload(cropRes)) {
+                                detectedItems.push({
+                                    data: cropRes.data,
+                                    managementCode: cropRes.managementCode,
+                                    points: [
+                                        { x: cropRes.location.topLeftCorner.x + sx, y: cropRes.location.topLeftCorner.y + sy },
+                                        { x: cropRes.location.topRightCorner.x + sx, y: cropRes.location.topRightCorner.y + sy },
+                                        { x: cropRes.location.bottomRightCorner.x + sx, y: cropRes.location.bottomRightCorner.y + sy },
+                                        { x: cropRes.location.bottomLeftCorner.x + sx, y: cropRes.location.bottomLeftCorner.y + sy }
+                                    ]
+                                });
+                            }
+                        }
+                    }
+
+                    // --- [繝輔ぉ繝ｼ繧ｺ 3 / Fallback] Custom jsQR Full-Screen Scan ---
+                    if (detectedItems.length === 0) {
+                        zxingCanvas.width = overlayCanvas.width;
+                        zxingCanvas.height = overlayCanvas.height;
+                        zxingCtx.drawImage(video, 0, 0, zxingCanvas.width, zxingCanvas.height);
+                        const fullData = zxingCtx.getImageData(0, 0, zxingCanvas.width, zxingCanvas.height);
+
+                        const opts = { inversionAttempts: "attemptBoth" };
+
+                        if (scanStage === 3) {
+                            if (appMask) {
+                                opts.appEncMask = Array.from(appMask);
+                            } else if (needSysEncForStage3) {
+                                // 騾壼ｸｸ繝｢繝ｼ繝・ 隨ｬ2QR縺ｯ繧ｷ繧ｹ繝・Β證怜捷蛹悶＆繧後※縺・ｋ
+                                opts.sysEncDecode = true;
+                            } else {
+                                opts.multi = true;
+                            }
+                        }
+
+                        // 莠碁㍾證怜捷蛹悶Δ繝ｼ繝峨・ Stage 1: 繧ｷ繧ｹ繝・Β證怜捷蛹悶＆繧後◆隨ｬ1QR繧呈爾縺・
+                        if (needSysEncForStage1) {
+                            opts.sysEncDecode = true;
+                        }
+
+                        let resFullList = jsQR(fullData.data, fullData.width, fullData.height, opts);
+                        if (resFullList && !Array.isArray(resFullList)) resFullList = [resFullList];
+
+                        if (resFullList && resFullList.length > 0) {
+                            for (let resFull of resFullList) {
+                                if (hasDecodedPayload(resFull)) {
+                                    
+                                    detectedItems.push({
+                                        data: resFull.data,
+                                        managementCode: resFull.managementCode,
+                                        binaryData: resFull.binaryData,
+                                        codewords: resFull.codewords || (resFull.rawMatrixData && resFull.rawMatrixData.codewords) || null,
+                                        points: [
+                                            resFull.location.topLeftCorner,
+                                            resFull.location.topRightCorner,
+                                            resFull.location.bottomRightCorner,
+                                            resFull.location.bottomLeftCorner
+                                        ]
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // --- 邨先棡蜃ｦ逅・Ν繝ｼ繝・---
+                    for (let item of detectedItems) {
+                        const { data: resultData, managementCode: resultMgmt, points: resultPts, binaryData: resultBinary, codewords: resultCodewords } = item;
+
+                        if (scanStage === 1) {
+                            // 笘・Stage 1縺ｧQR1繧堤匱隕九＠縺滄圀縲√◎縺ｮ鬆伜沺繧剃ｿ晏ｭ倥＠縺ｦ縺翫￥・・tage 3縺ｮPhase 2.5縺ｧ蜀榊茜逕ｨ縺吶ｋ縺溘ａ・・
+                            if (resultPts && resultPts.length === 4) {
+                                const xs = resultPts.map(p => p.x);
+                                const ys = resultPts.map(p => p.y);
+                                lastTwinBBox = {
+                                    x: Math.min(...xs),
+                                    y: Math.min(...ys),
+                                    width: Math.max(...xs) - Math.min(...xs),
+                                    height: Math.max(...ys) - Math.min(...ys)
+                                };
+                            }
+
+                            firstQR = { text: resultData, managementCode: resultMgmt, points: resultPts, binaryData: resultBinary, codewords: resultCodewords };
+                            
+                            const mgmtStr = resultMgmt !== undefined ? resultMgmt.toString(2).padStart(16, '0') : "0000000000000000";
+                            
+                            // 蜷御ｸ繝・・繧ｿ繝輔Λ繧ｰ
+                            if (mgmtStr[5] === '1') {
+                                secondQR = { text: resultData, managementCode: resultMgmt, points: resultPts, binaryData: resultBinary, codewords: resultCodewords };
+                                isScanning = false;
+                                isProcessing = false;
+                                signatureAuth = await verifyTwinSignatureIfNeeded(firstQR, secondQR);
+                                showResultScreen();
+                                return;
+                            }
+
+                            if (scanMode === 'normal') {
+                                // 騾壼ｸｸ繝｢繝ｼ繝・
+                                if (mgmtStr[6] === '1') {
+                                    // 繧ｷ繧ｹ繝・Β證怜捷蛹悶ン繝・ヨON 竊・繧ｷ繧ｹ繝・Β證怜捷蛹也判髱｢繧定｡ｨ遉ｺ
+                                    isProcessing = false;
+                                    showSysEncScreen();
+                                    return;
+                                } else if (mgmtStr[7] === '1') {
+                                    // 繧｢繝励Μ證怜捷蛹悶ン繝・ヨON 竊・繝代せ繝ｯ繝ｼ繝牙・蜉帷判髱｢
+                                    isProcessing = false;
+                                    showPasswordScreen();
+                                    return;
+                                } else {
+                                    // 證怜捷蛹悶↑縺・竊・隨ｬ2QR謗｢邏｢
+                                    scanStage = 3;
+                                    statusText.innerText = "隨ｬ2QR繧呈爾邏｢荳ｭ...";
+                                }
+                            } else {
+                                // 莠碁㍾證怜捷蛹悶Δ繝ｼ繝・
+                                // 隨ｬ1QR・医す繧ｹ繝・Β證怜捷蛹厄ｼ峨ｒ隱ｭ縺ｿ蜿悶▲縺・竊・繧｢繝励Μ證怜捷蛹也判髱｢繧定｡ｨ遉ｺ
+                                isProcessing = false;
+                                showDoubleEncScreen();
+                                return;
+                            }
+                        }
+                        else if (scanStage === 3) {
+                            // 隨ｬ2QR謗｢邏｢荳ｭ
+                            const diffTxt = resultData !== firstQR.text;
+                            const diffMgmt = firstQR.managementCode !== undefined && resultMgmt !== undefined && firstQR.managementCode !== resultMgmt;
+                            
+                            if (!diffTxt && !diffMgmt) {
+                                continue;
+                            }
+
+                            secondQR = { text: resultData, managementCode: resultMgmt, points: resultPts, binaryData: resultBinary, codewords: resultCodewords };
+                            isScanning = false;
+                                isProcessing = false;
+                                signatureAuth = await verifyTwinSignatureIfNeeded(firstQR, secondQR);
+                                showResultScreen();
+                            return;
+                        }
+                    }
+
+                } catch (e) {
+                    console.error("繧ｹ繧ｭ繝｣繝ｳ繝ｫ繝ｼ繝励お繝ｩ繝ｼ", e);
+                }
+                isProcessing = false;
+            }
+
+            if (isScanning) requestAnimationFrame(scanLoop);
+        }
+    </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
